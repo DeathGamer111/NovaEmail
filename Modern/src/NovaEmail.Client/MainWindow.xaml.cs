@@ -9,8 +9,10 @@ using MimeKit.Utils;
 using NovaEmail.Assistant;
 using NovaEmail.Intelligence;
 using NovaEmail.Mail;
+using NovaEmail.Rendering;
 using NovaEmail.Safety;
 using NovaEmail.Storage;
+using NovaEmail.Sync;
 
 namespace NovaEmail.Client;
 
@@ -20,6 +22,7 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<MailItem> _drafts = [];
     private readonly ObservableCollection<MailItem> _outbox = [];
     private readonly ObservableCollection<MailItem> _sent = [];
+    private readonly HashSet<string> _synchronizedInboxIds = new(StringComparer.Ordinal);
     private readonly List<ContactItem> _contacts = [];
     private readonly List<CalendarItem> _calendarEvents = [];
     private readonly WindowsCredentialVault _mailVault = new();
@@ -70,6 +73,7 @@ public sealed partial class MainWindow : Window
             await LoadPersistedItemsAsync();
             await LoadContactsAndCalendarAsync();
             await LoadSettingsAsync();
+            await LoadSynchronizedInboxAsync();
             ShowFolder("Inbox");
             MessageList.SelectedIndex = 0;
             ShowStatus("Local demo ready. Send stages messages in Outbox; no external mail is submitted.");
@@ -179,7 +183,7 @@ public sealed partial class MainWindow : Window
         AiModelBox.Text = _settings.AiModel;
         if (_store is null) return;
         var profiles = await _store.ReadLatestMailAccountProfilesAsync();
-        var profile = profiles.Count == 0 ? null : profiles[0];
+        var profile = SelectActiveProfile(profiles);
         if (profile is null)
         {
             EmailAddressBox.Text = _settings.SenderAddress;
@@ -196,6 +200,77 @@ public sealed partial class MainWindow : Window
         SelectTls(ImapTlsBox, profile.ReceiveTlsMode);
         SelectTls(SmtpTlsBox, profile.SmtpTlsMode);
     }
+
+    private async Task LoadSynchronizedInboxAsync(string? preferredFolderId = null)
+    {
+        if (_store is null) return;
+        var profiles = await _store.ReadLatestMailAccountProfilesAsync();
+        var profile = SelectActiveProfile(profiles);
+        if (profile is null) return;
+        var folders = await _store.ReadStoredFolderSummariesAsync();
+        var inboxFolder = folders.FirstOrDefault(folder =>
+                folder.AccountId.Equals(profile.AccountId, StringComparison.Ordinal) &&
+                !folder.IsTombstoned &&
+                folder.FolderId.Equals(preferredFolderId, StringComparison.Ordinal)) ??
+            folders.FirstOrDefault(folder =>
+                folder.AccountId.Equals(profile.AccountId, StringComparison.Ordinal) &&
+                !folder.IsTombstoned &&
+                folder.RemoteFullName?.Equals("INBOX", StringComparison.OrdinalIgnoreCase) is true);
+        if (inboxFolder is null) return;
+
+        foreach (var existing in _inbox.Where(item => _synchronizedInboxIds.Contains(item.Id)).ToArray())
+            _inbox.Remove(existing);
+        _synchronizedInboxIds.Clear();
+
+        var page = await _store.ListStoredFolderMessagesPageAsync(inboxFolder.FolderId, pageSize: 500);
+        foreach (var stored in page.Messages)
+        {
+            try
+            {
+                var mime = await SafeMimeParser.ParseAsync(await _store.ReadStoredMimeAsync(stored.MessageId));
+                var body = !string.IsNullOrWhiteSpace(mime.TextBody)
+                    ? mime.TextBody
+                    : SafeHtmlRenderer.CreateReadableTextFallback(mime.HtmlBody);
+                if (string.IsNullOrWhiteSpace(body)) body = stored.Snippet;
+                var timestamp = mime.Date == DateTimeOffset.MinValue
+                    ? stored.SentUtc ?? DateTimeOffset.Now
+                    : mime.Date;
+                _inbox.Add(new MailItem
+                {
+                    Id = stored.MessageId,
+                    Folder = "Inbox",
+                    Sender = string.IsNullOrWhiteSpace(stored.Sender) ? mime.From.ToString() : stored.Sender,
+                    Recipients = string.IsNullOrWhiteSpace(stored.Recipients) ? mime.To.ToString() : stored.Recipients,
+                    Subject = string.IsNullOrWhiteSpace(stored.Subject) ? "(No subject)" : stored.Subject,
+                    Preview = CreatePreview(body),
+                    Body = body,
+                    Timestamp = timestamp,
+                });
+                _synchronizedInboxIds.Add(stored.MessageId);
+            }
+            catch
+            {
+                // Corrupt or unsupported MIME remains isolated in the store and is not rendered.
+            }
+        }
+    }
+
+    private static string CreatePreview(string value)
+    {
+        var singleLine = string.Join(' ', value.Split(
+            (char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        return singleLine.Length <= 180 ? singleLine : singleLine[..177] + "…";
+    }
+
+    private StoredMailAccountProfile? SelectActiveProfile(
+        IReadOnlyList<StoredMailAccountProfile> profiles) =>
+        profiles.FirstOrDefault(profile =>
+            profile.SenderAddress.Equals(_settings.SenderAddress, StringComparison.OrdinalIgnoreCase)) ??
+        profiles.OrderByDescending(profile => profile.SavedUtc).FirstOrDefault();
+
+    private static string BuildAccountId(string senderAddress) =>
+        "mail-" + Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(senderAddress.ToLowerInvariant())))[..20];
 
     private async Task LoadContactsAndCalendarAsync()
     {
@@ -694,8 +769,7 @@ public sealed partial class MainWindow : Window
         try
         {
             var senderAddress = MailboxAddress.Parse(EmailAddressBox.Text).Address;
-            var accountId = "mail-" + Convert.ToHexStringLower(
-                SHA256.HashData(Encoding.UTF8.GetBytes(senderAddress.ToLowerInvariant())))[..20];
+            var accountId = BuildAccountId(senderAddress);
             var userName = AccountUserBox.Text.Trim();
             var profile = await _store.SaveMailAccountProfileRevisionAsync(new MailAccountProfileInput(
                 accountId,
@@ -727,8 +801,7 @@ public sealed partial class MainWindow : Window
         try
         {
             var senderAddress = MailboxAddress.Parse(EmailAddressBox.Text).Address;
-            var accountId = "mail-" + Convert.ToHexStringLower(
-                SHA256.HashData(Encoding.UTF8.GetBytes(senderAddress.ToLowerInvariant())))[..20];
+            var accountId = BuildAccountId(senderAddress);
             var stored = _mailVault.Read(accountId);
             var password = string.IsNullOrWhiteSpace(AccountPasswordBox.Password)
                 ? stored?.Password
@@ -883,10 +956,61 @@ public sealed partial class MainWindow : Window
     private static EmailIntelligenceSource ToAiSource(MailItem item) =>
         new(item.Id, item.Subject, item.Sender, item.Timestamp, item.Body);
 
-    private void SyncButton_Click(object sender, RoutedEventArgs e)
+    private async void SyncButton_Click(object sender, RoutedEventArgs e)
     {
-        SelectFolder("Settings");
-        ShowStatus("Configure an account, then use Test IMAP. Full folder synchronization is the next demo milestone.");
+        if (_store is null)
+        {
+            ShowStatus("Local storage is unavailable.", InfoBarSeverity.Error);
+            return;
+        }
+        try
+        {
+            var profiles = await _store.ReadLatestMailAccountProfilesAsync();
+            var senderAddress = MailboxAddress.Parse(EmailAddressBox.Text).Address;
+            var accountId = BuildAccountId(senderAddress);
+            var profile = profiles.FirstOrDefault(candidate =>
+                candidate.AccountId.Equals(accountId, StringComparison.Ordinal));
+            if (profile is null)
+            {
+                SelectFolder("Settings");
+                throw new InvalidOperationException("Save an IMAP account in Settings first.");
+            }
+            if (!profile.ReceiveProtocol.Equals("Imap", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The configured account is not an IMAP account.");
+            var storedCredential = _mailVault.Read(profile.AccountId) ??
+                throw new InvalidOperationException("Save the account password in Settings first.");
+
+            SyncButton.IsEnabled = false;
+            ShowStatus("Discovering folders and synchronizing mail over read-only IMAP…");
+            var coordinator = new ImapAccountSyncCoordinator(
+                _store,
+                new SecureMailEndpoint(
+                    profile.ReceiveHost,
+                    profile.ReceivePort,
+                    ParseTls(profile.ReceiveTlsMode)),
+                new MailCredentials(storedCredential.UserName, storedCredential.Password),
+                new EndpointPolicy(),
+                new CertificateTrustPolicy());
+            var result = await coordinator.SynchronizeAsync(profile.AccountId);
+            await LoadSynchronizedInboxAsync(result.InboxFolderId);
+            SelectFolder("Inbox");
+            MessageList.SelectedIndex = MessageList.Items.Count == 0 ? -1 : 0;
+            var conflictSuffix = result.Conflicts.Count == 0
+                ? string.Empty
+                : $" {result.Conflicts.Count} conflict(s) were retained for review.";
+            ShowStatus(
+                $"Synchronized {result.Folders.Count} folder(s): {result.Imported} new, " +
+                $"{result.Reconciled} reconciled, {result.Tombstoned} removed.{conflictSuffix}",
+                result.Conflicts.Count == 0 ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"IMAP synchronization failed safely: {exception.Message}", InfoBarSeverity.Error);
+        }
+        finally
+        {
+            SyncButton.IsEnabled = true;
+        }
     }
 
     private void SelectFolder(string folder)
