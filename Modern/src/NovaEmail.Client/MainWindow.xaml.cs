@@ -14,6 +14,8 @@ using NovaEmail.Rendering;
 using NovaEmail.Safety;
 using NovaEmail.Storage;
 using NovaEmail.Sync;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace NovaEmail.Client;
 
@@ -25,6 +27,7 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<MailItem> _outbox = [];
     private readonly ObservableCollection<MailItem> _sent = [];
     private readonly ObservableCollection<MailItem> _remoteFolderMessages = [];
+    private readonly ObservableCollection<ComposeAttachmentItem> _composeAttachments = [];
     private readonly HashSet<string> _storedMessageIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StoredFolderSummary> _remoteFolders = new(StringComparer.Ordinal);
     private readonly List<ContactItem> _contacts = [];
@@ -46,6 +49,7 @@ public sealed partial class MainWindow : Window
         try
         {
             InitializeComponent();
+            ComposeAttachmentList.ItemsSource = _composeAttachments;
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(TitleBarRegion);
             SeedInbox();
@@ -843,6 +847,8 @@ public sealed partial class MainWindow : Window
         ComposeCcBox.Text = string.Empty;
         ComposeSubjectBox.Text = string.Empty;
         ComposeBodyBox.Text = string.Empty;
+        _composeAttachments.Clear();
+        UpdateComposeAttachmentSummary();
         AiDraftConsentCheckBox.IsChecked = false;
         ComposeLayer.Visibility = Visibility.Visible;
         ComposeToBox.Focus(FocusState.Programmatic);
@@ -850,6 +856,85 @@ public sealed partial class MainWindow : Window
 
     private void CloseComposeButton_Click(object sender, RoutedEventArgs e) =>
         ComposeLayer.Visibility = Visibility.Collapsed;
+
+    private async void AttachFilesButton_Click(object sender, RoutedEventArgs e)
+    {
+        const int maximumAttachmentCount = 20;
+        const long maximumAttachmentBytes = 25L * 1024L * 1024L;
+        const long maximumAggregateBytes = 50L * 1024L * 1024L;
+        try
+        {
+            var picker = new FileOpenPicker
+            {
+                ViewMode = PickerViewMode.List,
+                SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            };
+            picker.FileTypeFilter.Add("*");
+            InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+            var files = await picker.PickMultipleFilesAsync();
+            if (files.Count == 0) return;
+            if (_composeAttachments.Count + files.Count > maximumAttachmentCount)
+                throw new InvalidDataException(
+                    $"A message can include at most {maximumAttachmentCount} attachments in this demo.");
+
+            var aggregateBytes = _composeAttachments.Sum(item => item.Content.LongLength);
+            var additions = new List<ComposeAttachmentItem>(files.Count);
+            foreach (var file in files)
+            {
+                var properties = await file.GetBasicPropertiesAsync();
+                if (properties.Size > maximumAttachmentBytes)
+                    throw new InvalidDataException($"{file.Name} exceeds the 25 MB per-file limit.");
+                aggregateBytes = checked(aggregateBytes + (long)properties.Size);
+                if (aggregateBytes > maximumAggregateBytes)
+                    throw new InvalidDataException("Attachments exceed the 50 MB message limit.");
+                await using var source = await file.OpenStreamForReadAsync();
+                await using var output = new MemoryStream(checked((int)properties.Size));
+                var buffer = new byte[128 * 1024];
+                while (true)
+                {
+                    var read = await source.ReadAsync(buffer);
+                    if (read == 0) break;
+                    if (output.Length + read > maximumAttachmentBytes)
+                        throw new InvalidDataException($"{file.Name} exceeds the 25 MB per-file limit.");
+                    await output.WriteAsync(buffer.AsMemory(0, read));
+                }
+                if (output.Length != (long)properties.Size)
+                    throw new IOException($"{file.Name} changed while it was being attached.");
+                additions.Add(new ComposeAttachmentItem
+                {
+                    Id = Guid.NewGuid().ToString("N"),
+                    FileName = file.Name,
+                    MediaType = MimeTypes.GetMimeType(file.Name),
+                    Content = output.ToArray(),
+                });
+            }
+            foreach (var attachment in additions) _composeAttachments.Add(attachment);
+            UpdateComposeAttachmentSummary();
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"Files were not attached: {exception.Message}", InfoBarSeverity.Error);
+        }
+    }
+
+    private void RemoveComposeAttachmentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id }) return;
+        var attachment = _composeAttachments.FirstOrDefault(item => item.Id.Equals(id, StringComparison.Ordinal));
+        if (attachment is null) return;
+        _composeAttachments.Remove(attachment);
+        UpdateComposeAttachmentSummary();
+    }
+
+    private void UpdateComposeAttachmentSummary()
+    {
+        ComposeAttachmentSummary.Text = _composeAttachments.Count switch
+        {
+            0 => "No attachments",
+            1 => "1 attachment",
+            _ => $"{_composeAttachments.Count} attachments",
+        };
+    }
 
     private async void SaveDraftButton_Click(object sender, RoutedEventArgs e)
     {
@@ -937,13 +1022,19 @@ public sealed partial class MainWindow : Window
             MessageId = MimeUtils.GenerateMessageId("novaemail.local"),
             Subject = ComposeSubjectBox.Text ?? string.Empty,
             Date = DateTimeOffset.UtcNow,
-            Body = new TextPart("plain") { Text = ComposeBodyBox.Text ?? string.Empty },
         };
         message.From.Add(MailboxAddress.Parse(senderText));
         AddAddresses(message.To, ComposeToBox.Text);
         AddAddresses(message.Cc, ComposeCcBox.Text);
         if (requireRecipient && message.To.Count + message.Cc.Count == 0)
             throw new InvalidDataException("Add at least one recipient before staging the message.");
+        var body = new BodyBuilder { TextBody = ComposeBodyBox.Text ?? string.Empty };
+        foreach (var attachment in _composeAttachments)
+            body.Attachments.Add(
+                attachment.FileName,
+                attachment.Content,
+                ContentType.Parse(attachment.MediaType));
+        message.Body = body.ToMessageBody();
         return message;
     }
 
