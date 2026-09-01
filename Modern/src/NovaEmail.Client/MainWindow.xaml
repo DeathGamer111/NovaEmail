@@ -162,8 +162,37 @@
                                 <TextBlock x:Name="AiResultText" Visibility="Collapsed" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
-                        <TextBlock x:Name="DetailBody" Grid.Row="3" Text="Choose a message from the list to read it here."
-                                   FontSize="15" LineHeight="24" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                        <Border x:Name="AttachmentPanel" Grid.Row="3" Visibility="Collapsed" Padding="14"
+                                CornerRadius="10" Margin="0,0,0,18"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                            <StackPanel Spacing="10">
+                                <TextBlock x:Name="AttachmentHeading" Text="Attachments" FontWeight="SemiBold" />
+                                <ItemsControl x:Name="AttachmentList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="local:AttachmentItem">
+                                            <Grid Padding="0,5" ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Spacing="2">
+                                                    <TextBlock Text="{x:Bind FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind Detail}" FontSize="12" Opacity="0.65" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="Save a copy" Tag="{x:Bind Ordinal}"
+                                                        Click="SaveAttachmentButton_Click" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        <Grid Grid.Row="4">
+                            <TextBlock x:Name="DetailBody" Text="Choose a message from the list to read it here."
+                                       FontSize="15" LineHeight="24" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                            <WebView2 x:Name="HtmlMessageView" Visibility="Collapsed" MinHeight="520"
+                                      NavigationStarting="HtmlMessageView_NavigationStarting" />
+                        </Grid>
                     </Grid>
                 </ScrollViewer>
 

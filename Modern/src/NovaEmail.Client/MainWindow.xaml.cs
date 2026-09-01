@@ -4,6 +4,7 @@ using System.Text;
 using MailKit;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Web.WebView2.Core;
 using MimeKit;
 using MimeKit.Utils;
 using NovaEmail.Assistant;
@@ -25,6 +26,7 @@ public sealed partial class MainWindow : Window
     private readonly HashSet<string> _synchronizedInboxIds = new(StringComparer.Ordinal);
     private readonly List<ContactItem> _contacts = [];
     private readonly List<CalendarItem> _calendarEvents = [];
+    private readonly SafeHtmlRenderer _htmlRenderer = new();
     private readonly WindowsCredentialVault _mailVault = new();
     private readonly WindowsSecretVault _secretVault = new();
     private ModernMailStore? _store;
@@ -385,7 +387,7 @@ public sealed partial class MainWindow : Window
         CalendarCountText.Text = items.Length == 1 ? "1 event" : $"{items.Length} events";
     }
 
-    private void MessageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void MessageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (MessageList.SelectedItem is not MailItem item) return;
         _selectedMessage = item;
@@ -394,8 +396,129 @@ public sealed partial class MainWindow : Window
         DetailRecipients.Text = $"To {item.Recipients} · {item.Timestamp.LocalDateTime:g}";
         DetailInitial.Text = item.SenderInitial;
         DetailBody.Text = item.Body;
+        DetailBody.Visibility = Visibility.Visible;
+        HtmlMessageView.Visibility = Visibility.Collapsed;
+        AttachmentPanel.Visibility = Visibility.Collapsed;
+        AttachmentList.ItemsSource = null;
         AiResultText.Visibility = Visibility.Collapsed;
         AiMessageConsentCheckBox.IsChecked = false;
+        if (_store is null || !_synchronizedInboxIds.Contains(item.Id)) return;
+
+        try
+        {
+            var mime = await SafeMimeParser.ParseAsync(await _store.ReadStoredMimeAsync(item.Id));
+            if (!string.IsNullOrWhiteSpace(mime.HtmlBody))
+            {
+                var safeDocument = await _htmlRenderer.SanitizeAsync(mime.HtmlBody);
+                if (_selectedMessage?.Id != item.Id) return;
+                await HtmlMessageView.EnsureCoreWebView2Async();
+                if (_selectedMessage?.Id != item.Id) return;
+                HtmlMessageView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                HtmlMessageView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                HtmlMessageView.NavigateToString(safeDocument.Html);
+                DetailBody.Visibility = Visibility.Collapsed;
+                HtmlMessageView.Visibility = Visibility.Visible;
+            }
+
+            var attachments = (await _store.ReadStoredAttachmentSummariesAsync(item.Id))
+                .Select(AttachmentItem.FromStored)
+                .ToArray();
+            if (_selectedMessage?.Id != item.Id || attachments.Length == 0) return;
+            AttachmentHeading.Text = attachments.Length == 1
+                ? "1 attachment"
+                : $"{attachments.Length} attachments";
+            AttachmentList.ItemsSource = attachments;
+            AttachmentPanel.Visibility = Visibility.Visible;
+        }
+        catch (Exception exception)
+        {
+            if (_selectedMessage?.Id == item.Id)
+                ShowStatus($"The stored message was shown as safe text: {exception.Message}", InfoBarSeverity.Warning);
+        }
+    }
+
+    private void HtmlMessageView_NavigationStarting(
+        WebView2 sender,
+        CoreWebView2NavigationStartingEventArgs args)
+    {
+        if (args.Uri.Equals("about:blank", StringComparison.OrdinalIgnoreCase)) return;
+        args.Cancel = true;
+        ShowStatus("External links are disabled in the local demo. Copy the address if you choose to open it separately.",
+            InfoBarSeverity.Warning);
+    }
+
+    private async void SaveAttachmentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store is null || sender is not Button { Tag: int ordinal } ||
+            AttachmentList.ItemsSource is not IEnumerable<AttachmentItem> attachments) return;
+        var attachment = attachments.FirstOrDefault(candidate => candidate.Ordinal == ordinal);
+        if (attachment is null) return;
+        try
+        {
+            var downloads = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads",
+                "Nova Email Attachments");
+            Directory.CreateDirectory(downloads);
+            var content = await _store.ReadStoredAttachmentContentAsync(
+                attachment.MessageId, attachment.Ordinal);
+            var destination = await WriteUniqueAttachmentCopyAsync(
+                downloads, attachment.FileName, content);
+            ShowStatus($"Saved a verified copy to {destination}", InfoBarSeverity.Success);
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"The attachment was not saved: {exception.Message}", InfoBarSeverity.Error);
+        }
+    }
+
+    private static async Task<string> WriteUniqueAttachmentCopyAsync(
+        string directory,
+        string fileName,
+        byte[] content)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+        var safeName = string.Concat(Path.GetFileName(fileName)
+            .Select(character => invalidCharacters.Contains(character) ? '_' : character))
+            .TrimEnd(' ', '.');
+        if (string.IsNullOrWhiteSpace(safeName)) safeName = "attachment.bin";
+        var stem = Path.GetFileNameWithoutExtension(safeName);
+        var extension = Path.GetExtension(safeName);
+        if (extension.Length > 32) extension = extension[..32];
+        if (stem.Equals("CON", StringComparison.OrdinalIgnoreCase) ||
+            stem.Equals("PRN", StringComparison.OrdinalIgnoreCase) ||
+            stem.Equals("AUX", StringComparison.OrdinalIgnoreCase) ||
+            stem.Equals("NUL", StringComparison.OrdinalIgnoreCase) ||
+            (stem.Length == 4 &&
+             (stem.StartsWith("COM", StringComparison.OrdinalIgnoreCase) ||
+              stem.StartsWith("LPT", StringComparison.OrdinalIgnoreCase)) &&
+             stem[3] is >= '1' and <= '9'))
+            stem = "_" + stem;
+        if (stem.Length + extension.Length > 180)
+            stem = stem[..Math.Max(1, 180 - extension.Length)];
+
+        for (var suffix = 1; suffix <= 10_000; suffix++)
+        {
+            var candidate = Path.Combine(
+                directory,
+                suffix == 1 ? stem + extension : $"{stem} ({suffix}){extension}");
+            try
+            {
+                await using var destination = new FileStream(
+                    candidate,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 128 * 1024,
+                    useAsync: true);
+                await destination.WriteAsync(content);
+                return candidate;
+            }
+            catch (IOException) when (File.Exists(candidate))
+            {
+            }
+        }
+        throw new IOException("A unique attachment filename could not be allocated.");
     }
 
     private void NewContactButton_Click(object sender, RoutedEventArgs e)
