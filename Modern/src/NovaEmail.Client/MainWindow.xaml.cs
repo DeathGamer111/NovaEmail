@@ -20,6 +20,8 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<MailItem> _drafts = [];
     private readonly ObservableCollection<MailItem> _outbox = [];
     private readonly ObservableCollection<MailItem> _sent = [];
+    private readonly List<ContactItem> _contacts = [];
+    private readonly List<CalendarItem> _calendarEvents = [];
     private readonly WindowsCredentialVault _mailVault = new();
     private readonly WindowsSecretVault _secretVault = new();
     private ModernMailStore? _store;
@@ -27,6 +29,8 @@ public sealed partial class MainWindow : Window
     private MailItem? _selectedMessage;
     private string _activeFolder = "Inbox";
     private string? _activeDraftId;
+    private string? _editingContactId;
+    private string? _editingCalendarEventId;
     private bool _uiReady;
 
     public MainWindow()
@@ -37,6 +41,8 @@ public sealed partial class MainWindow : Window
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(TitleBarRegion);
             SeedInbox();
+            ResetContactEditor();
+            ResetCalendarEditor();
             _uiReady = true;
             FolderNavigation.SelectedIndex = 0;
             Activated += MainWindow_Activated;
@@ -62,6 +68,7 @@ public sealed partial class MainWindow : Window
             _store = ModernMailStore.CreateLocalStore();
             await _store.InitializeAsync();
             await LoadPersistedItemsAsync();
+            await LoadContactsAndCalendarAsync();
             await LoadSettingsAsync();
             ShowFolder("Inbox");
             MessageList.SelectedIndex = 0;
@@ -190,6 +197,22 @@ public sealed partial class MainWindow : Window
         SelectTls(SmtpTlsBox, profile.SmtpTlsMode);
     }
 
+    private async Task LoadContactsAndCalendarAsync()
+    {
+        if (_store is null) return;
+
+        _contacts.Clear();
+        _contacts.AddRange((await _store.ReadLatestContactsAsync(maximumCount: 500))
+            .Select(ContactItem.FromStored));
+
+        var rangeStart = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
+        var rangeEnd = new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
+        _calendarEvents.Clear();
+        _calendarEvents.AddRange((await _store.ReadLocalCalendarAgendaAsync(
+                rangeStart, rangeEnd, maximumCount: 500))
+            .Select(CalendarItem.FromStored));
+    }
+
     private void FolderNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_uiReady) return;
@@ -202,12 +225,33 @@ public sealed partial class MainWindow : Window
         _activeFolder = folder;
         FolderTitle.Text = folder;
         var settings = folder == "Settings";
+        var contacts = folder == "Contacts";
+        var calendar = folder == "Calendar";
+        var fullWidthView = settings || contacts || calendar;
         SettingsView.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
-        MessageDetailView.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
-        MessageListColumn.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
-        Grid.SetColumn(ContentColumn, settings ? 1 : 2);
-        Grid.SetColumnSpan(ContentColumn, settings ? 2 : 1);
+        ContactsView.Visibility = contacts ? Visibility.Visible : Visibility.Collapsed;
+        CalendarView.Visibility = calendar ? Visibility.Visible : Visibility.Collapsed;
+        MessageDetailView.Visibility = fullWidthView ? Visibility.Collapsed : Visibility.Visible;
+        MessageListColumn.Visibility = fullWidthView ? Visibility.Collapsed : Visibility.Visible;
+        Grid.SetColumn(ContentColumn, fullWidthView ? 1 : 2);
+        Grid.SetColumnSpan(ContentColumn, fullWidthView ? 2 : 1);
+        SearchBox.IsEnabled = !settings;
+        SearchBox.PlaceholderText = contacts
+            ? "Search contacts"
+            : calendar
+                ? "Search calendar"
+                : "Search mail";
         if (settings) return;
+        if (contacts)
+        {
+            ApplyContactFilter(SearchBox.Text);
+            return;
+        }
+        if (calendar)
+        {
+            ApplyCalendarFilter(SearchBox.Text);
+            return;
+        }
 
         var source = folder switch
         {
@@ -218,21 +262,7 @@ public sealed partial class MainWindow : Window
             _ => [],
         };
         ApplyFilter(source, SearchBox.Text);
-        if (folder is "Contacts" or "Calendar")
-        {
-            DetailSubject.Text = folder;
-            DetailSender.Text = folder == "Contacts" ? "Local contact book" : "Local calendar";
-            DetailRecipients.Text = "Stored only on this computer";
-            DetailInitial.Text = folder[0].ToString();
-            DetailBody.Text = folder == "Contacts"
-                ? "Contact storage and recipient resolution are available in the reusable core. The next demo pass will add the dedicated contact editor here."
-                : "Local calendar events, ICS import, and calendar suggestions are available in the reusable core. The next demo pass will add the agenda editor here.";
-            AiMessageConsentCheckBox.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            AiMessageConsentCheckBox.Visibility = Visibility.Visible;
-        }
+        AiMessageConsentCheckBox.Visibility = Visibility.Visible;
     }
 
     private void ApplyFilter(IEnumerable<MailItem> source, string? query)
@@ -254,6 +284,32 @@ public sealed partial class MainWindow : Window
             ShowFolder(_activeFolder);
     }
 
+    private void ApplyContactFilter(string? query)
+    {
+        var normalized = query?.Trim() ?? string.Empty;
+        var items = string.IsNullOrEmpty(normalized)
+            ? _contacts.ToArray()
+            : _contacts.Where(contact =>
+                contact.DisplayName.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                contact.EmailAddress.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                contact.Notes.Contains(normalized, StringComparison.OrdinalIgnoreCase)).ToArray();
+        ContactList.ItemsSource = items;
+        ContactCountText.Text = items.Length == 1 ? "1 contact" : $"{items.Length} contacts";
+    }
+
+    private void ApplyCalendarFilter(string? query)
+    {
+        var normalized = query?.Trim() ?? string.Empty;
+        var items = string.IsNullOrEmpty(normalized)
+            ? _calendarEvents.ToArray()
+            : _calendarEvents.Where(calendarEvent =>
+                calendarEvent.Title.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                calendarEvent.Location.Contains(normalized, StringComparison.OrdinalIgnoreCase) ||
+                calendarEvent.Notes.Contains(normalized, StringComparison.OrdinalIgnoreCase)).ToArray();
+        CalendarList.ItemsSource = items;
+        CalendarCountText.Text = items.Length == 1 ? "1 event" : $"{items.Length} events";
+    }
+
     private void MessageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (MessageList.SelectedItem is not MailItem item) return;
@@ -266,6 +322,222 @@ public sealed partial class MainWindow : Window
         AiResultText.Visibility = Visibility.Collapsed;
         AiMessageConsentCheckBox.IsChecked = false;
     }
+
+    private void NewContactButton_Click(object sender, RoutedEventArgs e)
+    {
+        ContactList.SelectedItem = null;
+        ResetContactEditor();
+        ContactNameBox.Focus(FocusState.Programmatic);
+    }
+
+    private void ContactList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ContactList.SelectedItem is not ContactItem contact) return;
+        _editingContactId = contact.ContactId;
+        ContactEditorTitle.Text = contact.DisplayName;
+        ContactNameBox.Text = contact.DisplayName;
+        ContactEmailBox.Text = contact.EmailAddress;
+        ContactNotesBox.Text = contact.Notes;
+        SaveContactButton.IsEnabled = !contact.IsGroup;
+        DeleteContactButton.IsEnabled = true;
+        ContactEditorHint.Text = contact.IsGroup
+            ? "Contact groups can be used for recipient resolution but are read-only in this demo editor."
+            : $"Revision {contact.Revision} · stored only on this computer.";
+    }
+
+    private async void SaveContactButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store is null)
+        {
+            ShowStatus("Local storage is unavailable; the contact was not saved.", InfoBarSeverity.Error);
+            return;
+        }
+        try
+        {
+            var name = ContactNameBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidDataException("Enter a contact name.");
+            var address = MailboxAddress.Parse(ContactEmailBox.Text.Trim()).Address;
+            var saved = await _store.SaveContactRevisionAsync(new ContactRevisionInput(
+                _editingContactId,
+                name,
+                address,
+                ContactNotesBox.Text ?? string.Empty,
+                IsGroup: false,
+                GroupMembers: []));
+            await LoadContactsAndCalendarAsync();
+            ApplyContactFilter(SearchBox.Text);
+            ContactList.SelectedItem = _contacts.FirstOrDefault(contact =>
+                string.Equals(contact.ContactId, saved.ContactId, StringComparison.Ordinal));
+            ShowStatus("Contact saved locally.", InfoBarSeverity.Success);
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"Contact was not saved: {exception.Message}", InfoBarSeverity.Error);
+        }
+    }
+
+    private async void DeleteContactButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store is null || string.IsNullOrWhiteSpace(_editingContactId)) return;
+        try
+        {
+            await _store.TombstoneContactAsync(_editingContactId);
+            await LoadContactsAndCalendarAsync();
+            ApplyContactFilter(SearchBox.Text);
+            ContactList.SelectedItem = null;
+            ResetContactEditor();
+            ShowStatus("Contact removed from the active contact book.", InfoBarSeverity.Success);
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"Contact was not removed: {exception.Message}", InfoBarSeverity.Error);
+        }
+    }
+
+    private void ResetContactEditor()
+    {
+        _editingContactId = null;
+        ContactEditorTitle.Text = "New contact";
+        ContactEditorHint.Text = "Contacts stay on this computer and are available when composing mail.";
+        ContactNameBox.Text = string.Empty;
+        ContactEmailBox.Text = string.Empty;
+        ContactNotesBox.Text = string.Empty;
+        SaveContactButton.IsEnabled = true;
+        DeleteContactButton.IsEnabled = false;
+    }
+
+    private void NewCalendarEventButton_Click(object sender, RoutedEventArgs e)
+    {
+        CalendarList.SelectedItem = null;
+        ResetCalendarEditor();
+        CalendarTitleBox.Focus(FocusState.Programmatic);
+    }
+
+    private void CalendarList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CalendarList.SelectedItem is not CalendarItem calendarEvent) return;
+        _editingCalendarEventId = calendarEvent.EventId;
+        CalendarEditorTitle.Text = calendarEvent.Title;
+        CalendarTitleBox.Text = calendarEvent.Title;
+        CalendarLocationBox.Text = calendarEvent.Location;
+        CalendarNotesBox.Text = calendarEvent.Notes;
+        CalendarAllDayCheckBox.IsChecked = calendarEvent.AllDay;
+        CalendarStartDatePicker.Date = ToDatePickerDate(calendarEvent.StartLocal);
+        CalendarStartTimePicker.Time = calendarEvent.StartLocal.TimeOfDay;
+        var displayedEnd = calendarEvent.AllDay
+            ? calendarEvent.EndLocal.AddDays(-1)
+            : calendarEvent.EndLocal;
+        CalendarEndDatePicker.Date = ToDatePickerDate(displayedEnd);
+        CalendarEndTimePicker.Time = calendarEvent.EndLocal.TimeOfDay;
+        SetCalendarTimeControls();
+        var editable = calendarEvent.SourceKind == CalendarEventSourceKind.LocalManual;
+        SaveCalendarEventButton.IsEnabled = editable;
+        DeleteCalendarEventButton.IsEnabled = editable;
+        CalendarEditorHint.Text = editable
+            ? "Local event · stored only on this computer."
+            : $"{calendarEvent.SourceKind} event · read-only in the local editor.";
+    }
+
+    private void CalendarAllDayCheckBox_Click(object sender, RoutedEventArgs e) =>
+        SetCalendarTimeControls();
+
+    private async void SaveCalendarEventButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store is null)
+        {
+            ShowStatus("Local storage is unavailable; the event was not saved.", InfoBarSeverity.Error);
+            return;
+        }
+        try
+        {
+            var title = CalendarTitleBox.Text.Trim();
+            if (string.IsNullOrWhiteSpace(title))
+                throw new InvalidDataException("Enter an event title.");
+            var allDay = CalendarAllDayCheckBox.IsChecked is true;
+            var start = allDay
+                ? ToUnspecifiedDate(CalendarStartDatePicker.Date.Date)
+                : ToUnspecifiedDate(CalendarStartDatePicker.Date.Date + CalendarStartTimePicker.Time);
+            var end = allDay
+                ? ToUnspecifiedDate(CalendarEndDatePicker.Date.Date.AddDays(1))
+                : ToUnspecifiedDate(CalendarEndDatePicker.Date.Date + CalendarEndTimePicker.Time);
+            var saved = await _store.SaveLocalCalendarEventRevisionAsync(
+                new LocalCalendarEventRevisionInput(
+                    _editingCalendarEventId,
+                    title,
+                    start,
+                    end,
+                    allDay,
+                    CalendarLocationBox.Text ?? string.Empty,
+                    CalendarNotesBox.Text ?? string.Empty,
+                    CalendarEventSourceKind.LocalManual));
+            await LoadContactsAndCalendarAsync();
+            ApplyCalendarFilter(SearchBox.Text);
+            CalendarList.SelectedItem = _calendarEvents.FirstOrDefault(calendarEvent =>
+                string.Equals(calendarEvent.EventId, saved.Event.EventId, StringComparison.Ordinal));
+            ShowStatus("Calendar event saved locally.", InfoBarSeverity.Success);
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"Calendar event was not saved: {exception.Message}", InfoBarSeverity.Error);
+        }
+    }
+
+    private async void DeleteCalendarEventButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store is null || string.IsNullOrWhiteSpace(_editingCalendarEventId)) return;
+        try
+        {
+            await _store.TombstoneLocalCalendarEventAsync(_editingCalendarEventId);
+            await LoadContactsAndCalendarAsync();
+            ApplyCalendarFilter(SearchBox.Text);
+            CalendarList.SelectedItem = null;
+            ResetCalendarEditor();
+            ShowStatus("Calendar event removed from the active agenda.", InfoBarSeverity.Success);
+        }
+        catch (Exception exception)
+        {
+            ShowStatus($"Calendar event was not removed: {exception.Message}", InfoBarSeverity.Error);
+        }
+    }
+
+    private void ResetCalendarEditor()
+    {
+        _editingCalendarEventId = null;
+        CalendarEditorTitle.Text = "New event";
+        CalendarEditorHint.Text = "Local events stay on this computer.";
+        CalendarTitleBox.Text = string.Empty;
+        CalendarLocationBox.Text = string.Empty;
+        CalendarNotesBox.Text = string.Empty;
+        CalendarAllDayCheckBox.IsChecked = false;
+        var now = DateTime.Now;
+        var start = new DateTime(
+            now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Unspecified).AddHours(1);
+        var end = start.AddHours(1);
+        CalendarStartDatePicker.Date = ToDatePickerDate(start);
+        CalendarStartTimePicker.Time = start.TimeOfDay;
+        CalendarEndDatePicker.Date = ToDatePickerDate(end);
+        CalendarEndTimePicker.Time = end.TimeOfDay;
+        SaveCalendarEventButton.IsEnabled = true;
+        DeleteCalendarEventButton.IsEnabled = false;
+        SetCalendarTimeControls();
+    }
+
+    private void SetCalendarTimeControls()
+    {
+        var enabled = CalendarAllDayCheckBox.IsChecked is not true;
+        CalendarStartTimePicker.IsEnabled = enabled;
+        CalendarEndTimePicker.IsEnabled = enabled;
+    }
+
+    private static DateTimeOffset ToDatePickerDate(DateTime value)
+    {
+        var unspecified = ToUnspecifiedDate(value);
+        return new DateTimeOffset(unspecified, TimeZoneInfo.Local.GetUtcOffset(unspecified));
+    }
+
+    private static DateTime ToUnspecifiedDate(DateTime value) =>
+        DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
 
     private void ComposeButton_Click(object sender, RoutedEventArgs e) => OpenComposer();
 

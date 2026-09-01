@@ -221,6 +221,154 @@
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+
+                <Grid x:Name="ContactsView" Visibility="Collapsed" Padding="28,24,32,32" ColumnSpacing="24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="310" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Contacts" FontSize="28" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ContactCountText" Text="0 contacts" Opacity="0.65" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="New contact" Style="{StaticResource AccentButtonStyle}"
+                                    VerticalAlignment="Center" Click="NewContactButton_Click" />
+                        </Grid>
+                        <ListView x:Name="ContactList" Grid.Row="1" SelectionMode="Single"
+                                  SelectionChanged="ContactList_SelectionChanged">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="local:ContactItem">
+                                    <Grid Padding="10" MinHeight="68">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="42" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource NovaAccentSoftBrush}">
+                                            <TextBlock Text="{x:Bind Initial}" Foreground="{StaticResource NovaAccentBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{x:Bind SecondaryText}" FontSize="12" Opacity="0.65" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel MaxWidth="680" HorizontalAlignment="Left" Spacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="ContactEditorTitle" Text="New contact" FontSize="24" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ContactEditorHint" Text="Contacts stay on this computer and are available when composing mail."
+                                           TextWrapping="Wrap" Opacity="0.65" />
+                            </StackPanel>
+                            <TextBox x:Name="ContactNameBox" Header="Name" PlaceholderText="Jordan Avery" />
+                            <TextBox x:Name="ContactEmailBox" Header="Email address" PlaceholderText="jordan@example.com" />
+                            <TextBox x:Name="ContactNotesBox" Header="Notes" AcceptsReturn="True" TextWrapping="Wrap"
+                                     MinHeight="140" VerticalContentAlignment="Top" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="SaveContactButton" Content="Save contact" Style="{StaticResource AccentButtonStyle}" Click="SaveContactButton_Click" />
+                                <Button x:Name="DeleteContactButton" Content="Remove contact" Click="DeleteContactButton_Click"
+                                        IsEnabled="False" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <Grid x:Name="CalendarView" Visibility="Collapsed" Padding="28,24,32,32" ColumnSpacing="24">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Calendar" FontSize="28" FontWeight="SemiBold" />
+                                <TextBlock x:Name="CalendarCountText" Text="0 events" Opacity="0.65" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="New event" Style="{StaticResource AccentButtonStyle}"
+                                    VerticalAlignment="Center" Click="NewCalendarEventButton_Click" />
+                        </Grid>
+                        <ListView x:Name="CalendarList" Grid.Row="1" SelectionMode="Single"
+                                  SelectionChanged="CalendarList_SelectionChanged">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="local:CalendarItem">
+                                    <Grid Padding="10" MinHeight="82">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="48" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="42" Height="54" CornerRadius="9" Background="{StaticResource NovaAccentSoftBrush}">
+                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+                                                <TextBlock Text="{x:Bind Month}" Foreground="{StaticResource NovaAccentBrush}"
+                                                           FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                                <TextBlock Text="{x:Bind Day}" Foreground="{StaticResource NovaAccentBrush}"
+                                                           FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{x:Bind DisplayRange}" FontSize="12" Opacity="0.72" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{x:Bind LocationText}" FontSize="12" Opacity="0.58" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                    <ScrollViewer Grid.Column="1">
+                        <StackPanel MaxWidth="700" HorizontalAlignment="Left" Spacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="CalendarEditorTitle" Text="New event" FontSize="24" FontWeight="SemiBold" />
+                                <TextBlock x:Name="CalendarEditorHint" Text="Local events stay on this computer."
+                                           TextWrapping="Wrap" Opacity="0.65" />
+                            </StackPanel>
+                            <TextBox x:Name="CalendarTitleBox" Header="Title" PlaceholderText="Planning session" />
+                            <TextBox x:Name="CalendarLocationBox" Header="Location" PlaceholderText="Conference room or video call" />
+                            <CheckBox x:Name="CalendarAllDayCheckBox" Content="All day" Click="CalendarAllDayCheckBox_Click" />
+                            <Grid ColumnSpacing="12" RowSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <DatePicker x:Name="CalendarStartDatePicker" Header="Start date" />
+                                <TimePicker x:Name="CalendarStartTimePicker" Grid.Column="1" Header="Start time" ClockIdentifier="12HourClock" />
+                                <DatePicker x:Name="CalendarEndDatePicker" Grid.Row="1" Header="End date" />
+                                <TimePicker x:Name="CalendarEndTimePicker" Grid.Row="1" Grid.Column="1" Header="End time" ClockIdentifier="12HourClock" />
+                            </Grid>
+                            <TextBox x:Name="CalendarNotesBox" Header="Notes" AcceptsReturn="True" TextWrapping="Wrap"
+                                     MinHeight="130" VerticalContentAlignment="Top" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="SaveCalendarEventButton" Content="Save event" Style="{StaticResource AccentButtonStyle}" Click="SaveCalendarEventButton_Click" />
+                                <Button x:Name="DeleteCalendarEventButton" Content="Remove event" Click="DeleteCalendarEventButton_Click"
+                                        IsEnabled="False" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
             </Grid>
         </Grid>
 

@@ -7,11 +7,11 @@ namespace NovaEmail.Storage.Tests;
 public sealed class ManagedStorageBoundaryTests
 {
     [Fact]
-    public void ModernStoreExposesOnlyTheFixedDevelopmentFactory()
+    public void StoreExposesOnlyTheFixedLocalFactory()
     {
         Assert.Empty(typeof(ModernMailStore).GetConstructors());
         var factory = typeof(ModernMailStore).GetMethod(
-            nameof(ModernMailStore.CreateDevelopmentStore),
+            nameof(ModernMailStore.CreateLocalStore),
             BindingFlags.Public | BindingFlags.Static);
 
         Assert.NotNull(factory);
