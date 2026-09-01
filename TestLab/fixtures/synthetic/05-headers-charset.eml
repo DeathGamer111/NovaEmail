@@ -1,0 +1,16 @@
+From: Extended Encoding <encoding@example.test>
+To: Demo User <demo@novaemail.test>
+Subject: Synthetic headers and charset
+Message-ID: <synthetic-shared-id@novaemail.test>
+Date: Tue, 01 Sep 2026 09:20:00 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: quoted-printable
+Disposition-Notification-To: receipts@example.test
+Importance: high
+X-Priority: 1
+X-NovaEmail-Fixture: synthetic-corpus
+X-NovaEmail-Custom: preserve-verbatim
+
+Synthetic extended-charset body with a tolerated soft line break=
+ and no private data.

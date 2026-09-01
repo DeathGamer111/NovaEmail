@@ -1,0 +1,12 @@
+From: Morgan Lee <morgan@example.test>
+To: Demo User <demo@novaemail.test>
+Cc: Project Team <team@example.test>
+Subject: Synthetic plaintext thread
+Message-ID: <synthetic-shared-id@novaemail.test>
+In-Reply-To: <synthetic-parent@novaemail.test>
+References: <synthetic-root@novaemail.test> <synthetic-parent@novaemail.test>
+Date: Tue, 01 Sep 2026 09:00:00 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+This is a synthetic plaintext reply used for Nova Email testing.

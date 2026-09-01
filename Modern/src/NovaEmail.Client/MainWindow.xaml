@@ -1,0 +1,278 @@
+<Window
+    x:Class="NovaEmail.Client.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:NovaEmail.Client"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Nova Email">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="64" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="TitleBarRegion" Grid.Row="0" Padding="20,0,16,0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
+                <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource NovaAccentBrush}">
+                    <TextBlock Text="N" Foreground="White" FontWeight="SemiBold" FontSize="20"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel VerticalAlignment="Center" Spacing="0">
+                    <TextBlock Text="Nova Email" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Text="Private local demo" FontSize="11" Opacity="0.62" />
+                </StackPanel>
+            </StackPanel>
+            <AutoSuggestBox x:Name="SearchBox" Grid.Column="1" Width="420" MaxWidth="560"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            PlaceholderText="Search mail" QueryIcon="Find"
+                            TextChanged="SearchBox_TextChanged" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                <Button x:Name="SyncButton" Content="Sync" Click="SyncButton_Click" />
+                <Button Content="Compose" Style="{StaticResource AccentButtonStyle}" Click="ComposeButton_Click" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,1,0"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid Padding="12,18,12,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="MAILBOX" Margin="12,0,0,10" FontSize="11" FontWeight="SemiBold" Opacity="0.62" />
+                    <ListView x:Name="FolderNavigation" Grid.Row="1" SelectionMode="Single"
+                              SelectionChanged="FolderNavigation_SelectionChanged">
+                        <ListViewItem Content="Inbox" Tag="Inbox" />
+                        <ListViewItem Content="Drafts" Tag="Drafts" />
+                        <ListViewItem Content="Outbox" Tag="Outbox" />
+                        <ListViewItem Content="Sent" Tag="Sent" />
+                        <ListViewItem Content="Contacts" Tag="Contacts" />
+                        <ListViewItem Content="Calendar" Tag="Calendar" />
+                        <ListViewItem Content="Settings" Tag="Settings" />
+                    </ListView>
+                    <Border Grid.Row="2" Padding="12" CornerRadius="10" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Demo safety" FontWeight="SemiBold" />
+                            <TextBlock Text="Send stages mail locally in Outbox. Nothing leaves this computer."
+                                       TextWrapping="Wrap" FontSize="12" Opacity="0.7" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border x:Name="MessageListColumn" Grid.Column="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Padding="18,16,14,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="FolderTitle" Text="Inbox" FontSize="23" FontWeight="SemiBold" />
+                        <TextBlock x:Name="FolderCount" Grid.Column="1" VerticalAlignment="Center" Opacity="0.6" />
+                    </Grid>
+                    <ListView x:Name="MessageList" Grid.Row="1" SelectionMode="Single"
+                              SelectionChanged="MessageList_SelectionChanged">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="local:MailItem">
+                                <Grid Padding="12,10" MinHeight="92">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="42" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource NovaAccentSoftBrush}"
+                                            VerticalAlignment="Top">
+                                        <TextBlock Text="{x:Bind SenderInitial}" Foreground="{StaticResource NovaAccentBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock Text="{x:Bind Sender}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{x:Bind Subject}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{x:Bind Preview}" FontSize="12" Opacity="0.62"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{x:Bind DisplayTime}" FontSize="11" Opacity="0.58" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <Grid x:Name="ContentColumn" Grid.Column="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                <ScrollViewer x:Name="MessageDetailView">
+                    <Grid Padding="34,26,38,40" MaxWidth="920" HorizontalAlignment="Stretch">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="DetailSubject" Text="Select a message" FontSize="28" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <Grid Grid.Row="1" Margin="0,20,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="42" Height="42" CornerRadius="21" Background="{StaticResource NovaAccentSoftBrush}">
+                                <TextBlock x:Name="DetailInitial" Text="N" Foreground="{StaticResource NovaAccentBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="DetailSender" Text="Nova Email" FontWeight="SemiBold" />
+                                <TextBlock x:Name="DetailRecipients" Text="Local demo mailbox" FontSize="12" Opacity="0.65" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                                <Button Content="Reply" Click="ReplyButton_Click" />
+                                <Button Content="More" IsEnabled="False" />
+                            </StackPanel>
+                        </Grid>
+                        <Border Grid.Row="2" Padding="14" CornerRadius="10" Margin="0,0,0,18"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                            <StackPanel Spacing="10">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <CheckBox x:Name="AiMessageConsentCheckBox" Content="Allow this message to be processed for this AI request" />
+                                    <Button Content="Summarize with AI" Click="SummarizeButton_Click" />
+                                </StackPanel>
+                                <TextBlock x:Name="AiResultText" Visibility="Collapsed" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="DetailBody" Grid.Row="3" Text="Choose a message from the list to read it here."
+                                   FontSize="15" LineHeight="24" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                    </Grid>
+                </ScrollViewer>
+
+                <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
+                    <StackPanel Padding="34,26,38,40" MaxWidth="760" HorizontalAlignment="Left" Spacing="18">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Configure a standards-based mail account and optional AI service. Passwords and API keys are stored in Windows Credential Manager."
+                                       TextWrapping="Wrap" Opacity="0.7" />
+                        </StackPanel>
+                        <TextBlock Text="Mail account" FontSize="18" FontWeight="SemiBold" />
+                        <Grid ColumnSpacing="12" RowSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBox x:Name="DisplayNameBox" Header="Display name" PlaceholderText="Your name" />
+                            <TextBox x:Name="EmailAddressBox" Grid.Column="1" Header="Email address" PlaceholderText="you@example.com" />
+                            <TextBox x:Name="ImapHostBox" Grid.Row="1" Header="IMAP host" PlaceholderText="imap.example.com" />
+                            <NumberBox x:Name="ImapPortBox" Grid.Row="1" Grid.Column="1" Header="IMAP port" Value="993" SpinButtonPlacementMode="Compact" />
+                            <TextBox x:Name="SmtpHostBox" Grid.Row="2" Header="SMTP host" PlaceholderText="smtp.example.com" />
+                            <NumberBox x:Name="SmtpPortBox" Grid.Row="2" Grid.Column="1" Header="SMTP port" Value="465" SpinButtonPlacementMode="Compact" />
+                            <TextBox x:Name="AccountUserBox" Grid.Row="3" Header="Login name" PlaceholderText="Usually your email address" />
+                            <PasswordBox x:Name="AccountPasswordBox" Grid.Row="3" Grid.Column="1" Header="Password or app password" />
+                            <ComboBox x:Name="ImapTlsBox" Grid.Row="4" Header="IMAP security" SelectedIndex="0">
+                                <ComboBoxItem Content="TLS on connect" Tag="ImplicitTls" />
+                                <ComboBoxItem Content="Require STARTTLS" Tag="RequiredStartTls" />
+                            </ComboBox>
+                            <ComboBox x:Name="SmtpTlsBox" Grid.Row="4" Grid.Column="1" Header="SMTP security" SelectedIndex="0">
+                                <ComboBoxItem Content="TLS on connect" Tag="ImplicitTls" />
+                                <ComboBoxItem Content="Require STARTTLS" Tag="RequiredStartTls" />
+                            </ComboBox>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Save account" Style="{StaticResource AccentButtonStyle}" Click="SaveAccountButton_Click" />
+                            <Button Content="Test IMAP" Click="TestImapButton_Click" />
+                        </StackPanel>
+                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,6" />
+                        <TextBlock Text="AI assistant (optional)" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="Nova Email sends message content only after you check the per-request consent box and click an AI action."
+                                   TextWrapping="Wrap" Opacity="0.7" />
+                        <TextBox x:Name="AiEndpointBox" Header="OpenWebUI HTTPS origin" PlaceholderText="https://localhost:3000/" />
+                        <TextBox x:Name="AiModelBox" Header="Model" PlaceholderText="qwen2.5:7b" />
+                        <PasswordBox x:Name="AiApiKeyBox" Header="API key" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="Save AI settings" Style="{StaticResource AccentButtonStyle}" Click="SaveAiSettingsButton_Click" />
+                            <TextBlock Text="AI remains off until an explicit action." VerticalAlignment="Center" Opacity="0.65" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <InfoBar x:Name="StatusBar" Grid.Row="2" IsOpen="True" IsClosable="False"
+                 Severity="Informational" Message="Starting Nova Email…" />
+
+        <Grid x:Name="ComposeLayer" Grid.RowSpan="3" Visibility="Collapsed" Background="#66000000">
+            <Border Width="680" HorizontalAlignment="Right" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
+                <Grid Padding="26,22">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="ComposeHeading" Text="New message" FontSize="22" FontWeight="SemiBold" />
+                        <Button Grid.Column="1" Content="Close" Click="CloseComposeButton_Click" />
+                    </Grid>
+                    <TextBox x:Name="ComposeToBox" Grid.Row="1" Header="To" Margin="0,14,0,0" />
+                    <TextBox x:Name="ComposeCcBox" Grid.Row="2" Header="Cc" />
+                    <TextBox x:Name="ComposeSubjectBox" Grid.Row="3" Header="Subject" />
+                    <TextBox x:Name="ComposeBodyBox" Grid.Row="4" Header="Message" AcceptsReturn="True"
+                             TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="260" />
+                    <Border Grid.Row="5" Padding="12" Margin="0,12,0,12" CornerRadius="8"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <CheckBox x:Name="AiDraftConsentCheckBox" Content="Allow this draft and reply context for this AI request" />
+                            <Button Content="Polish with AI" Click="PolishDraftButton_Click" />
+                        </StackPanel>
+                    </Border>
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Content="Stage in Outbox" Style="{StaticResource AccentButtonStyle}" Click="StageOutboxButton_Click" />
+                        <Button Grid.Column="1" Content="Save draft" Margin="8,0,0,0" Click="SaveDraftButton_Click" />
+                        <TextBlock Grid.Column="2" Text="Demo mode never submits SMTP." HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" FontSize="12" Opacity="0.65" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

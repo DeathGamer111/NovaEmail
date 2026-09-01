@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>NovaEmail.AiDemoProbe</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NovaEmail.Assistant/NovaEmail.Assistant.csproj" />
+    <ProjectReference Include="../../src/NovaEmail.Intelligence/NovaEmail.Intelligence.csproj" />
+    <ProjectReference Include="../../src/NovaEmail.Safety/NovaEmail.Safety.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,25 @@
+From: Forwarder <forwarder@example.test>
+To: Demo User <demo@novaemail.test>
+Subject: Synthetic forwarded message
+Message-ID: <synthetic-forward@novaemail.test>
+Date: Tue, 01 Sep 2026 09:15:00 -0500
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="nova-forward"
+
+--nova-forward
+Content-Type: text/plain; charset=utf-8
+
+Forwarding the enclosed synthetic message.
+--nova-forward
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+From: Original Sender <original@example.test>
+To: Forwarder <forwarder@example.test>
+Subject: Enclosed synthetic note
+Message-ID: <synthetic-enclosed@novaemail.test>
+Date: Tue, 01 Sep 2026 08:00:00 -0500
+Content-Type: text/plain; charset=utf-8
+
+This is the enclosed message body.
+--nova-forward--

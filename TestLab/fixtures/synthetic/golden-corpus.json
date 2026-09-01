@@ -1,0 +1,27 @@
+[
+  {
+    "path": "01-plaintext-thread.eml",
+    "subject": "Synthetic plaintext thread",
+    "categories": ["plaintext", "reply", "reply-all", "threading", "duplicate-message-id"]
+  },
+  {
+    "path": "02-html-alternative.eml",
+    "subject": "Synthetic HTML alternative",
+    "categories": ["html", "multipart-alternative", "quoted-printable"]
+  },
+  {
+    "path": "03-attachment.eml",
+    "subject": "Synthetic attachment",
+    "categories": ["attachment", "base64-body", "large-attachment"]
+  },
+  {
+    "path": "04-nested-forward.eml",
+    "subject": "Synthetic forwarded message",
+    "categories": ["multipart-nesting", "message-rfc822", "forward"]
+  },
+  {
+    "path": "05-headers-charset.eml",
+    "subject": "Synthetic headers and charset",
+    "categories": ["extended-charset", "malformed-tolerated", "custom-headers", "receipt", "priority", "duplicate-message-id"]
+  }
+]

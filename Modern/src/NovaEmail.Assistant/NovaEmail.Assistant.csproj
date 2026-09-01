@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../NovaEmail.Intelligence/NovaEmail.Intelligence.csproj" />
+    <ProjectReference Include="../NovaEmail.Safety/NovaEmail.Safety.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NovaEmail.Intelligence.Tests" />
+  </ItemGroup>
+</Project>

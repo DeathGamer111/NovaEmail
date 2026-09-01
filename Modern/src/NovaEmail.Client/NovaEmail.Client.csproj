@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>NovaEmail.Client</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishTrimmed>false</PublishTrimmed>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <ProjectReference Include="../NovaEmail.Assistant/NovaEmail.Assistant.csproj" />
+    <ProjectReference Include="../NovaEmail.Intelligence/NovaEmail.Intelligence.csproj" />
+    <ProjectReference Include="../NovaEmail.Mail/NovaEmail.Mail.csproj" />
+    <ProjectReference Include="../NovaEmail.Rendering/NovaEmail.Rendering.csproj" />
+    <ProjectReference Include="../NovaEmail.Safety/NovaEmail.Safety.csproj" />
+    <ProjectReference Include="../NovaEmail.Storage/NovaEmail.Storage.csproj" />
+    <ProjectReference Include="../NovaEmail.Sync/NovaEmail.Sync.csproj" />
+  </ItemGroup>
+</Project>

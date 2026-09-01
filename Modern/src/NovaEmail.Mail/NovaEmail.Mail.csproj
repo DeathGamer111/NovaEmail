@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="MailKit" />
+    <ProjectReference Include="../NovaEmail.Domain/NovaEmail.Domain.csproj" />
+    <ProjectReference Include="../NovaEmail.Safety/NovaEmail.Safety.csproj" />
+    <ProjectReference Include="../NovaEmail.Storage/NovaEmail.Storage.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,11 @@
+# Pin the default checkout convention so machine-wide core.autocrlf settings do
+# not rewrite source bytes between local verification sessions.
+* text=auto eol=lf
+
+# Windows command processors require their native line-ending convention.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Raw message fixtures are immutable payloads, not source text.
+*.eml -text
+*.mime -text

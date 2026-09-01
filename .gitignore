@@ -1,0 +1,34 @@
+# Nova Email local-only state. None of these paths may be committed.
+/.artifacts/
+**/.artifacts/
+/.local/
+/Modern/.vs/
+/Modern/TestResults/
+/Modern/**/bin/
+/Modern/**/obj/
+/Modern/**/*.user
+/TestLab/.env
+/TestLab/certificates/
+/TestLab/state/
+
+# Fail-safe local data and secret material. Synthetic source fixtures use
+# text/MIME formats and remain explicitly reviewable in the repository.
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/*.pfx
+**/*.p12
+**/*.pvk
+**/*.key
+**/*.pem
+**/*.cer
+**/*.crt
+**/.env
+**/.env.*
+!**/.env.example
+**/browser-profile/
+**/browser-profiles/
+**/docker-state/
+**/secrets.local.json

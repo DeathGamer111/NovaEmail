@@ -1,0 +1,19 @@
+From: Attachments <files@example.test>
+To: Demo User <demo@novaemail.test>
+Subject: Synthetic attachment
+Message-ID: <synthetic-attachment@novaemail.test>
+Date: Tue, 01 Sep 2026 09:10:00 -0500
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="nova-mixed"
+
+--nova-mixed
+Content-Type: text/plain; charset=utf-8
+
+This synthetic message has a small attachment; the runtime test covers the bounded 8 MiB case.
+--nova-mixed
+Content-Type: application/octet-stream; name="sample.txt"
+Content-Disposition: attachment; filename="sample.txt"
+Content-Transfer-Encoding: base64
+
+Tm92YSBFbWFpbCBzeW50aGV0aWMgYXR0YWNobWVudC4K
+--nova-mixed--

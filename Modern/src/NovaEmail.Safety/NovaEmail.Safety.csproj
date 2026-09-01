@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NovaEmail.Domain/NovaEmail.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NovaEmail.Safety.Tests" />
+    <InternalsVisibleTo Include="NovaEmail.Storage.Tests" />
+    <InternalsVisibleTo Include="NovaEmail.Client" />
+    <InternalsVisibleTo Include="NovaEmail.Storage" />
+  </ItemGroup>
+</Project>

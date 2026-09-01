@@ -1,0 +1,19 @@
+From: Alex Rivera <alex@example.test>
+To: Demo User <demo@novaemail.test>
+Subject: Synthetic HTML alternative
+Message-ID: <synthetic-html@novaemail.test>
+Date: Tue, 01 Sep 2026 09:05:00 -0500
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="nova-alt"
+
+--nova-alt
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Plain alternative with an equals sign =3D and safe synthetic content.
+--nova-alt
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<html><body><p><strong>HTML alternative</strong> with safe synthetic content.</p></body></html>
+--nova-alt--

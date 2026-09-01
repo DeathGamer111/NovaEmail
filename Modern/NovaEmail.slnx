@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NovaEmail.Assistant/NovaEmail.Assistant.csproj" />
+    <Project Path="src/NovaEmail.Client/NovaEmail.Client.csproj" />
+    <Project Path="src/NovaEmail.Domain/NovaEmail.Domain.csproj" />
+    <Project Path="src/NovaEmail.Intelligence/NovaEmail.Intelligence.csproj" />
+    <Project Path="src/NovaEmail.Mail/NovaEmail.Mail.csproj" />
+    <Project Path="src/NovaEmail.Rendering/NovaEmail.Rendering.csproj" />
+    <Project Path="src/NovaEmail.Safety/NovaEmail.Safety.csproj" />
+    <Project Path="src/NovaEmail.Storage/NovaEmail.Storage.csproj" />
+    <Project Path="src/NovaEmail.Sync/NovaEmail.Sync.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NovaEmail.Intelligence.Tests/NovaEmail.Intelligence.Tests.csproj" />
+    <Project Path="tests/NovaEmail.Safety.Tests/NovaEmail.Safety.Tests.csproj" />
+    <Project Path="tests/NovaEmail.Storage.Tests/NovaEmail.Storage.Tests.csproj" />
+    <Project Path="tests/NovaEmail.Sync.Tests/NovaEmail.Sync.Tests.csproj" />
+    <Project Path="tests/NovaEmail.Mail.Tests/NovaEmail.Mail.Tests.csproj" />
+    <Project Path="tests/NovaEmail.Rendering.Tests/NovaEmail.Rendering.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/NovaEmail.AiDemoProbe/NovaEmail.AiDemoProbe.csproj" />
+    <Project Path="tools/NovaEmail.PerformanceProbe/NovaEmail.PerformanceProbe.csproj" />
+  </Folder>
+</Solution>
