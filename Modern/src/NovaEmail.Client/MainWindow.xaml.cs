@@ -19,11 +19,14 @@ namespace NovaEmail.Client;
 
 public sealed partial class MainWindow : Window
 {
+    private const string RemoteFolderTagPrefix = "imap-folder:";
     private readonly ObservableCollection<MailItem> _inbox = [];
     private readonly ObservableCollection<MailItem> _drafts = [];
     private readonly ObservableCollection<MailItem> _outbox = [];
     private readonly ObservableCollection<MailItem> _sent = [];
-    private readonly HashSet<string> _synchronizedInboxIds = new(StringComparer.Ordinal);
+    private readonly ObservableCollection<MailItem> _remoteFolderMessages = [];
+    private readonly HashSet<string> _storedMessageIds = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, StoredFolderSummary> _remoteFolders = new(StringComparer.Ordinal);
     private readonly List<ContactItem> _contacts = [];
     private readonly List<CalendarItem> _calendarEvents = [];
     private readonly SafeHtmlRenderer _htmlRenderer = new();
@@ -76,6 +79,7 @@ public sealed partial class MainWindow : Window
             await LoadContactsAndCalendarAsync();
             await LoadSettingsAsync();
             await LoadSynchronizedInboxAsync();
+            await LoadRemoteFolderNavigationAsync();
             ShowFolder("Inbox");
             MessageList.SelectedIndex = 0;
             ShowStatus("Local demo ready. Send stages messages in Outbox; no external mail is submitted.");
@@ -220,11 +224,57 @@ public sealed partial class MainWindow : Window
                 folder.RemoteFullName?.Equals("INBOX", StringComparison.OrdinalIgnoreCase) is true);
         if (inboxFolder is null) return;
 
-        foreach (var existing in _inbox.Where(item => _synchronizedInboxIds.Contains(item.Id)).ToArray())
+        foreach (var existing in _inbox.Where(item => _storedMessageIds.Contains(item.Id)).ToArray())
             _inbox.Remove(existing);
-        _synchronizedInboxIds.Clear();
+        _storedMessageIds.Clear();
 
-        var page = await _store.ListStoredFolderMessagesPageAsync(inboxFolder.FolderId, pageSize: 500);
+        foreach (var item in await ReadStoredFolderMessagesAsync(inboxFolder.FolderId, "Inbox"))
+            _inbox.Add(item);
+    }
+
+    private async Task LoadRemoteFolderNavigationAsync()
+    {
+        foreach (var existing in FolderNavigation.Items.OfType<ListViewItem>()
+                     .Where(item => item.Tag is string tag &&
+                         tag.StartsWith(RemoteFolderTagPrefix, StringComparison.Ordinal))
+                     .ToArray())
+            FolderNavigation.Items.Remove(existing);
+        _remoteFolders.Clear();
+        _remoteFolderMessages.Clear();
+        if (_store is null) return;
+
+        var profile = SelectActiveProfile(await _store.ReadLatestMailAccountProfilesAsync());
+        if (profile is null) return;
+        var folders = (await _store.ReadStoredFolderSummariesAsync())
+            .Where(folder =>
+                folder.AccountId.Equals(profile.AccountId, StringComparison.Ordinal) &&
+                !folder.IsTombstoned &&
+                !folder.IsLocalOnly &&
+                folder.RemoteFullName is not null &&
+                !folder.RemoteFullName.Equals("INBOX", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(folder => folder.RemoteFullName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(folder => folder.RemoteFullName, StringComparer.Ordinal)
+            .ToArray();
+        var insertionIndex = 1;
+        foreach (var folder in folders)
+        {
+            var tag = RemoteFolderTagPrefix + folder.FolderId;
+            _remoteFolders.Add(tag, folder);
+            FolderNavigation.Items.Insert(insertionIndex++, new ListViewItem
+            {
+                Content = "Server · " + folder.RemoteFullName,
+                Tag = tag,
+            });
+        }
+    }
+
+    private async Task<IReadOnlyList<MailItem>> ReadStoredFolderMessagesAsync(
+        string folderId,
+        string displayFolder)
+    {
+        if (_store is null) return [];
+        var items = new List<MailItem>();
+        var page = await _store.ListStoredFolderMessagesPageAsync(folderId, pageSize: 500);
         foreach (var stored in page.Messages)
         {
             try
@@ -237,10 +287,10 @@ public sealed partial class MainWindow : Window
                 var timestamp = mime.Date == DateTimeOffset.MinValue
                     ? stored.SentUtc ?? DateTimeOffset.Now
                     : mime.Date;
-                _inbox.Add(new MailItem
+                items.Add(new MailItem
                 {
                     Id = stored.MessageId,
-                    Folder = "Inbox",
+                    Folder = displayFolder,
                     Sender = string.IsNullOrWhiteSpace(stored.Sender) ? mime.From.ToString() : stored.Sender,
                     Recipients = string.IsNullOrWhiteSpace(stored.Recipients) ? mime.To.ToString() : stored.Recipients,
                     Subject = string.IsNullOrWhiteSpace(stored.Subject) ? "(No subject)" : stored.Subject,
@@ -248,13 +298,14 @@ public sealed partial class MainWindow : Window
                     Body = body,
                     Timestamp = timestamp,
                 });
-                _synchronizedInboxIds.Add(stored.MessageId);
+                _storedMessageIds.Add(stored.MessageId);
             }
             catch
             {
                 // Corrupt or unsupported MIME remains isolated in the store and is not rendered.
             }
         }
+        return items;
     }
 
     private static string CreatePreview(string value)
@@ -290,17 +341,44 @@ public sealed partial class MainWindow : Window
             .Select(CalendarItem.FromStored));
     }
 
-    private void FolderNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void FolderNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_uiReady) return;
         if (FolderNavigation.SelectedItem is ListViewItem item && item.Tag is string folder)
+        {
+            if (_remoteFolders.TryGetValue(folder, out var remoteFolder))
+            {
+                try
+                {
+                    var messages = await ReadStoredFolderMessagesAsync(
+                        remoteFolder.FolderId,
+                        remoteFolder.DisplayName);
+                    if (FolderNavigation.SelectedItem is not ListViewItem { Tag: string selectedTag } ||
+                        !selectedTag.Equals(folder, StringComparison.Ordinal)) return;
+                    _remoteFolderMessages.Clear();
+                    foreach (var message in messages)
+                        _remoteFolderMessages.Add(message);
+                    ShowFolder(folder);
+                    MessageList.SelectedIndex = MessageList.Items.Count == 0 ? -1 : 0;
+                }
+                catch (Exception exception)
+                {
+                    ShowStatus($"The synchronized folder could not be opened: {exception.Message}",
+                        InfoBarSeverity.Error);
+                }
+                return;
+            }
             ShowFolder(folder);
+        }
     }
 
     private void ShowFolder(string folder)
     {
         _activeFolder = folder;
-        FolderTitle.Text = folder;
+        var remoteFolder = _remoteFolders.GetValueOrDefault(folder);
+        FolderTitle.Text = remoteFolder is null
+            ? folder
+            : remoteFolder.RemoteFullName ?? remoteFolder.DisplayName;
         var settings = folder == "Settings";
         var contacts = folder == "Contacts";
         var calendar = folder == "Calendar";
@@ -336,6 +414,7 @@ public sealed partial class MainWindow : Window
             "Drafts" => _drafts,
             "Outbox" => _outbox,
             "Sent" => _sent,
+            _ when remoteFolder is not null => _remoteFolderMessages,
             _ => [],
         };
         ApplyFilter(source, SearchBox.Text);
@@ -402,7 +481,7 @@ public sealed partial class MainWindow : Window
         AttachmentList.ItemsSource = null;
         AiResultText.Visibility = Visibility.Collapsed;
         AiMessageConsentCheckBox.IsChecked = false;
-        if (_store is null || !_synchronizedInboxIds.Contains(item.Id)) return;
+        if (_store is null || !_storedMessageIds.Contains(item.Id)) return;
 
         try
         {
@@ -1116,6 +1195,7 @@ public sealed partial class MainWindow : Window
                 new CertificateTrustPolicy());
             var result = await coordinator.SynchronizeAsync(profile.AccountId);
             await LoadSynchronizedInboxAsync(result.InboxFolderId);
+            await LoadRemoteFolderNavigationAsync();
             SelectFolder("Inbox");
             MessageList.SelectedIndex = MessageList.Items.Count == 0 ? -1 : 0;
             var conflictSuffix = result.Conflicts.Count == 0
