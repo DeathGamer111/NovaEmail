@@ -441,8 +441,9 @@
                             <TextBlock x:Name="ComposeAttachmentSummary" Text="No attachments"
                                        VerticalAlignment="Center" FontSize="12" Opacity="0.65" />
                         </StackPanel>
-                        <ItemsControl x:Name="ComposeAttachmentList" Grid.Row="1" Margin="0,6,0,0">
-                            <ItemsControl.ItemTemplate>
+                        <ListView x:Name="ComposeAttachmentList" Grid.Row="1" Margin="0,6,0,0"
+                                  MaxHeight="112" SelectionMode="None">
+                            <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="local:ComposeAttachmentItem">
                                     <Grid Padding="8,4" ColumnSpacing="10">
                                         <Grid.ColumnDefinitions>
@@ -456,8 +457,8 @@
                                                 Click="RemoveComposeAttachmentButton_Click" />
                                     </Grid>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListView.ItemTemplate>
+                        </ListView>
                     </Grid>
                     <Border Grid.Row="6" Padding="12" Margin="0,12,0,12" CornerRadius="8"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
