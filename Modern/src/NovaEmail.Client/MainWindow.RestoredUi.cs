@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Text;
 using NovaEmail.Intelligence;
 using NovaEmail.Rendering;
+using NovaEmail.Storage;
 using Windows.UI.ViewManagement;
 
 namespace NovaEmail.Client;
@@ -20,12 +21,21 @@ public sealed partial class MainWindow
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NovaEmail",
             "theme.json"));
+    private readonly MailboxPresentationStateStore _mailboxStateStore = new(
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NovaEmail",
+            "mailbox-state.json"));
+    private MailboxPresentationState _mailboxState = MailboxPresentationState.Empty;
     private bool _initializingTheme = true;
     private bool _inlineReplyAll;
     private bool _updatingCompactMailboxSelector;
 
     private void InitializeRestoredUi()
     {
+        _mailboxState = _mailboxStateStore.Load().State;
+        foreach (var label in _mailboxState.Labels)
+            AddUserLabelNavigationItem(label);
         RefreshCompactMailboxSelector();
         ThemeSelector.Items.Clear();
         foreach (var definition in ApplicationThemeCatalog.All)
@@ -305,6 +315,64 @@ public sealed partial class MainWindow
     private MailItem[] SelectedMessages() =>
         MessageList.SelectedItems.OfType<MailItem>().ToArray();
 
+    private void RestorePersistedMailboxState(ObservableCollection<MailItem> source)
+    {
+        foreach (var message in source.ToArray())
+        {
+            if (!_mailboxState.Messages.TryGetValue(message.Id, out var state)) continue;
+            message.IsRead = state.IsRead;
+            message.IsFollowUp = state.IsFollowUp;
+            var destination = ResolveLocalMailboxCollection(state.Folder);
+            if (destination is null || ReferenceEquals(destination, source)) continue;
+            source.Remove(message);
+            if (!destination.Any(existing => existing.Id.Equals(message.Id, StringComparison.Ordinal)))
+            {
+                message.Folder = state.Folder;
+                destination.Add(message);
+            }
+        }
+    }
+
+    private ObservableCollection<MailItem>? ResolveLocalMailboxCollection(string folder) => folder switch
+    {
+        "Inbox" => _inbox,
+        "Drafts" => _drafts,
+        "Outbox" => _outbox,
+        "Sent" => _sent,
+        "Archive" => _archive,
+        "Trash" => _trash,
+        "Junk" => _junk,
+        _ => null,
+    };
+
+    private bool TryPersistMessageStates(IEnumerable<MailItem> changedMessages, out string? diagnostic)
+    {
+        var messages = new Dictionary<string, MailboxMessagePresentationState>(
+            _mailboxState.Messages, StringComparer.Ordinal);
+        foreach (var message in changedMessages)
+        {
+            var persistedFolder = ResolveLocalMailboxCollection(message.Folder) is null
+                ? string.Empty
+                : message.Folder;
+            messages[message.Id] = new MailboxMessagePresentationState(
+                persistedFolder, message.IsRead, message.IsFollowUp);
+        }
+
+        _mailboxState = _mailboxState with { Messages = messages };
+        try
+        {
+            _mailboxStateStore.Save(_mailboxState);
+            diagnostic = null;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            InvalidOperationException or InvalidDataException)
+        {
+            diagnostic = exception.Message;
+            return false;
+        }
+    }
+
     private void UpdateMessageActionState()
     {
         var count = MessageList.SelectedItems.Count;
@@ -353,9 +421,13 @@ public sealed partial class MainWindow
             moved++;
         }
         if (moved == 0) return;
+        var persisted = TryPersistMessageStates(selected, out var diagnostic);
         RefreshActiveMessageView();
-        ShowStatus($"Moved {moved} message{(moved == 1 ? string.Empty : "s")} to {folder} locally.",
-            InfoBarSeverity.Success);
+        ShowStatus(
+            persisted
+                ? $"Moved {moved} message{(moved == 1 ? string.Empty : "s")} to {folder} locally."
+                : $"Moved {moved} message{(moved == 1 ? string.Empty : "s")} for this session, but the state could not be saved: {diagnostic}",
+            persisted ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
     }
 
     private void ArchiveSelectedMessagesButton_Click(object sender, RoutedEventArgs e) =>
@@ -376,16 +448,28 @@ public sealed partial class MainWindow
 
     private void MarkSelectedReadButton_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var message in SelectedMessages()) message.IsRead = true;
+        var selected = SelectedMessages();
+        foreach (var message in selected) message.IsRead = true;
+        var persisted = TryPersistMessageStates(selected, out var diagnostic);
         RefreshActiveMessageView();
-        ShowStatus("Selected messages were marked read locally.", InfoBarSeverity.Success);
+        ShowStatus(
+            persisted
+                ? "Selected messages were marked read locally."
+                : $"Messages were marked read for this session, but the state could not be saved: {diagnostic}",
+            persisted ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
     }
 
     private void MarkSelectedUnreadButton_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var message in SelectedMessages()) message.IsRead = false;
+        var selected = SelectedMessages();
+        foreach (var message in selected) message.IsRead = false;
+        var persisted = TryPersistMessageStates(selected, out var diagnostic);
         RefreshActiveMessageView();
-        ShowStatus("Selected messages were marked unread locally.", InfoBarSeverity.Success);
+        ShowStatus(
+            persisted
+                ? "Selected messages were marked unread locally."
+                : $"Messages were marked unread for this session, but the state could not be saved: {diagnostic}",
+            persisted ? InfoBarSeverity.Success : InfoBarSeverity.Warning);
     }
 
     private async void AddLabelButton_Click(object sender, RoutedEventArgs e)
@@ -405,13 +489,35 @@ public sealed partial class MainWindow
             DefaultButton = ContentDialogButton.Primary,
         };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary || string.IsNullOrWhiteSpace(name.Text)) return;
+        if (_mailboxState.Labels.Count >= MailboxPresentationStateStore.MaximumLabels)
+        {
+            ShowStatus("The local label limit has been reached.", InfoBarSeverity.Warning);
+            return;
+        }
+
+        var label = new MailboxLabelDefinition(
+            Guid.NewGuid().ToString("N"), name.Text.Trim(), filter.Text.Trim());
+        _mailboxState = _mailboxState with { Labels = _mailboxState.Labels.Append(label).ToArray() };
+        AddUserLabelNavigationItem(label);
+        try
+        {
+            _mailboxStateStore.Save(_mailboxState);
+            ShowStatus($"Created local label {label.DisplayName}.", InfoBarSeverity.Success);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            InvalidOperationException or InvalidDataException)
+        {
+            ShowStatus($"Created label {label.DisplayName} for this session, but it could not be saved: {exception.Message}",
+                InfoBarSeverity.Warning);
+        }
+    }
+
+    private void AddUserLabelNavigationItem(MailboxLabelDefinition label) =>
         LabelNavigationList.Items.Add(new ListViewItem
         {
-            Content = name.Text.Trim(),
-            Tag = "label:user:" + filter.Text.Trim(),
+            Content = label.DisplayName,
+            Tag = "label:user:" + label.Id,
         });
-        ShowStatus($"Created local label {name.Text.Trim()}.", InfoBarSeverity.Success);
-    }
 
     private void LabelNavigationList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -429,14 +535,7 @@ public sealed partial class MainWindow
             "label:attachments" => all.Where(message => message.HasAttachments),
             "label:followup" => all.Where(message => message.IsFollowUp),
             _ when tag.StartsWith("label:user:", StringComparison.Ordinal) =>
-                all.Where(message =>
-                {
-                    var filter = tag["label:user:".Length..];
-                    return string.IsNullOrWhiteSpace(filter) ||
-                           message.Sender.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                           message.Subject.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                           message.Body.Contains(filter, StringComparison.OrdinalIgnoreCase);
-                }),
+                all.Where(message => MatchesUserLabel(message, tag)),
             _ => [],
         };
         _activeFolder = tag;
@@ -452,6 +551,17 @@ public sealed partial class MainWindow
         Grid.SetColumn(ContentColumn, 2);
         Grid.SetColumnSpan(ContentColumn, 1);
         ApplyFilter(matches, SearchBox.Text);
+    }
+
+    private bool MatchesUserLabel(MailItem message, string tag)
+    {
+        var labelId = tag["label:user:".Length..];
+        var filter = _mailboxState.Labels.FirstOrDefault(label =>
+            label.Id.Equals(labelId, StringComparison.Ordinal))?.FilterText;
+        return filter is not null && (string.IsNullOrWhiteSpace(filter) ||
+            message.Sender.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+            message.Subject.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+            message.Body.Contains(filter, StringComparison.OrdinalIgnoreCase));
     }
 
     private void RefreshCompactMailboxSelector()

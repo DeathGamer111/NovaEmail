@@ -6,6 +6,8 @@ The demo never submits staged messages. Choosing **Send** persists a complete MI
 
 After saving an account in **Settings**, **Refresh** discovers selectable IMAP folders and imports mail through read-only IMAP operations. Folder identities, UIDVALIDITY checkpoints, message flags, MIME bodies, and attachments are retained in the local store so repeated synchronization reconciles mail without duplicating it. The Inbox is projected into the main mail view, and other retained server folders appear lazily in the sidebar. HTML messages are sanitized before display, remote resources and in-message navigation remain blocked, and verified attachments can be saved as uniquely named local copies.
 
+Local Archive, Trash, Junk, read/follow-up state, and user-created filter labels survive app restarts. This presentation-state file contains message identifiers and view metadata only; it does not duplicate message bodies or credentials.
+
 ## Build and run
 
 Prerequisites:

@@ -144,6 +144,7 @@ public sealed partial class MainWindow : Window
             Body = "Thank you for your sample order.\n\nOrder: NV-1042\nStatus: Demonstration only\nTotal: $0.00\n\nThis message contains no real purchase or account information.",
             Timestamp = now.AddDays(-3),
         });
+        RestorePersistedMailboxState(_inbox);
     }
 
     private async Task LoadPersistedItemsAsync()
@@ -204,6 +205,8 @@ public sealed partial class MainWindow : Window
                 // A corrupt queued item remains protected by the store and is not rendered.
             }
         }
+        RestorePersistedMailboxState(_drafts);
+        RestorePersistedMailboxState(_outbox);
     }
 
     private async Task LoadSettingsAsync()
@@ -253,6 +256,7 @@ public sealed partial class MainWindow : Window
 
         foreach (var item in await ReadStoredFolderMessagesAsync(inboxFolder.FolderId, "Inbox"))
             _inbox.Add(item);
+        RestorePersistedMailboxState(_inbox);
     }
 
     private async Task LoadRemoteFolderNavigationAsync()
@@ -330,6 +334,8 @@ public sealed partial class MainWindow : Window
                     Body = body,
                     Timestamp = timestamp,
                     HasAttachments = mime.Attachments.Any(),
+                    IsRead = HasStoredFlag(stored.Flags, "\\Seen", "Seen"),
+                    IsFollowUp = HasStoredFlag(stored.Flags, "\\Flagged", "Flagged", "Urgent"),
                 });
                 _storedMessageIds.Add(stored.MessageId);
             }
@@ -340,6 +346,9 @@ public sealed partial class MainWindow : Window
         }
         return items;
     }
+
+    private static bool HasStoredFlag(IReadOnlyList<string> flags, params string[] candidates) =>
+        flags.Any(flag => candidates.Contains(flag, StringComparer.OrdinalIgnoreCase));
 
     private static string CreatePreview(string value)
     {
@@ -393,6 +402,7 @@ public sealed partial class MainWindow : Window
                     _remoteFolderMessages.Clear();
                     foreach (var message in messages)
                         _remoteFolderMessages.Add(message);
+                    RestorePersistedMailboxState(_remoteFolderMessages);
                     ShowFolder(folder);
                     MessageList.SelectedIndex = MessageList.Items.Count == 0 ? -1 : 0;
                 }
