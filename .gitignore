@@ -2,11 +2,11 @@
 /.artifacts/
 **/.artifacts/
 /.local/
-/Modern/.vs/
-/Modern/TestResults/
-/Modern/**/bin/
-/Modern/**/obj/
-/Modern/**/*.user
+/NovaClient/.vs/
+/NovaClient/TestResults/
+/NovaClient/**/bin/
+/NovaClient/**/obj/
+/NovaClient/**/*.user
 /TestLab/.env
 /TestLab/certificates/
 /TestLab/state/

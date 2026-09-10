@@ -90,14 +90,14 @@ Do not commit real credentials, private mail, production database files, or expo
 - An IMAP account with TLS and a password or provider-issued app password, if testing synchronization
 - An OpenWebUI-compatible HTTPS endpoint and API key, if testing AI features
 
-The repository pins the SDK in `Modern/global.json` and verifies the selected SDK during restore and build.
+The repository pins the SDK in `NovaClient/global.json` and verifies the selected SDK during restore and build.
 
 ## Build and run
 
 Open PowerShell in the repository root, then run:
 
 ```powershell
-Set-Location .\Modern
+Set-Location .\NovaClient
 dotnet restore .\NovaEmail.slnx
 dotnet build .\NovaEmail.slnx -c Debug --no-restore
 dotnet run --project .\src\NovaEmail.Client\NovaEmail.Client.csproj --no-build
@@ -106,14 +106,14 @@ dotnet run --project .\src\NovaEmail.Client\NovaEmail.Client.csproj --no-build
 The built executable is placed under:
 
 ```text
-Modern\src\NovaEmail.Client\bin\Debug\net10.0-windows10.0.22621.0\win-x64\NovaEmail.Client.exe
+NovaClient\src\NovaEmail.Client\bin\Debug\net10.0-windows10.0.22621.0\win-x64\NovaEmail.Client.exe
 ```
 
 The `windows10.0.22621.0` target-framework suffix identifies the Windows SDK contract version. The application is currently validated only on Windows 11.
 
 ## Run the tests
 
-From the `Modern` directory:
+From the `NovaClient` directory:
 
 ```powershell
 dotnet test .\NovaEmail.slnx -c Debug --no-restore
@@ -196,7 +196,7 @@ The repository `.gitignore` excludes databases, private keys, certificates, envi
 
 ```text
 NovaEmail/
-├─ Modern/
+├─ NovaClient/
 │  ├─ src/
 │  │  ├─ NovaEmail.Client/        WinUI 3 desktop application
 │  │  ├─ NovaEmail.Domain/        Shared domain records

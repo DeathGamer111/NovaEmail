@@ -546,7 +546,7 @@ public sealed class LocalIcsCalendarProviderSnapshotSourceTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (Directory.Exists(Path.Combine(directory.FullName, "Modern")) &&
+            if (Directory.Exists(Path.Combine(directory.FullName, "NovaClient")) &&
                 Directory.Exists(Path.Combine(directory.FullName, "TestLab")))
             {
                 var root = Path.Combine(

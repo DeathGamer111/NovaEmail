@@ -33,7 +33,7 @@ public sealed class DevelopmentAuditLogTests
     private static string CreateTestRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "Modern")))
+        while (directory is not null && !Directory.Exists(Path.Combine(directory.FullName, "NovaClient")))
             directory = directory.Parent;
         if (directory is null) throw new DirectoryNotFoundException();
         var root = Path.Combine(

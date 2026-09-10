@@ -312,7 +312,7 @@ public sealed class ProtectedDirectoryBoundaryTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (Directory.Exists(Path.Combine(directory.FullName, "Modern")) &&
+            if (Directory.Exists(Path.Combine(directory.FullName, "NovaClient")) &&
                 Directory.Exists(Path.Combine(directory.FullName, "TestLab")))
                 return directory.FullName;
             directory = directory.Parent;

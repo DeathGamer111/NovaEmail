@@ -11,6 +11,6 @@
           Condition="'$(MSBuildProjectExtension)' == '.csproj'"
           BeforeTargets="PrepareForBuild;Restore">
     <Error Condition="'$(NETCoreSdkVersion)' != '$(NovaEmailRequiredDotNetSdkVersion)'"
-           Text="Nova Email requires stable .NET SDK $(NovaEmailRequiredDotNetSdkVersion), but MSBuild selected $(NETCoreSdkVersion). Run dotnet from the Modern directory." />
+           Text="Nova Email requires stable .NET SDK $(NovaEmailRequiredDotNetSdkVersion), but MSBuild selected $(NETCoreSdkVersion). Run dotnet from the NovaClient directory." />
   </Target>
 </Project>
