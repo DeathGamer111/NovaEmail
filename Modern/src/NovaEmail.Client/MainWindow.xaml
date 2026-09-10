@@ -1,485 +1,292 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="NovaEmail.Client.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:NovaEmail.Client"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="Nova Email">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="RootLayout" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.Resources>
+            <SolidColorBrush x:Key="ComposeColorBlackBrush" Color="#FF000000" />
+            <SolidColorBrush x:Key="ComposeColorWhiteBrush" Color="#FFFFFFFF" />
+            <SolidColorBrush x:Key="ComposeColorRedBrush" Color="#FFC42B1C" />
+            <SolidColorBrush x:Key="ComposeColorGoldBrush" Color="#FFFFB900" />
+            <SolidColorBrush x:Key="ComposeColorGreenBrush" Color="#FF107C10" />
+            <SolidColorBrush x:Key="ComposeColorBlueBrush" Color="#FF0067C0" />
+            <SolidColorBrush x:Key="ComposeColorPurpleBrush" Color="#FF744DA9" />
+            <SolidColorBrush x:Key="ComposeColorYellowBrush" Color="#FFFFFF00" />
+        </Grid.Resources>
         <Grid.RowDefinitions>
-            <RowDefinition Height="64" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid x:Name="TitleBarRegion" Grid.Row="0" Padding="20,0,16,0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="12">
-                <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource NovaAccentBrush}">
-                    <TextBlock Text="N" Foreground="White" FontWeight="SemiBold" FontSize="20"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-                <StackPanel VerticalAlignment="Center" Spacing="0">
-                    <TextBlock Text="Nova Email" FontSize="17" FontWeight="SemiBold" />
-                    <TextBlock Text="Private local demo" FontSize="11" Opacity="0.62" />
-                </StackPanel>
-            </StackPanel>
-            <AutoSuggestBox x:Name="SearchBox" Grid.Column="1" Width="420" MaxWidth="560"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            PlaceholderText="Search mail" QueryIcon="Find"
-                            TextChanged="SearchBox_TextChanged" />
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-                <Button x:Name="SyncButton" Content="Sync" Click="SyncButton_Click" />
-                <Button Content="Compose" Style="{StaticResource AccentButtonStyle}" Click="ComposeButton_Click" />
-            </StackPanel>
-        </Grid>
+        <CommandBar x:Name="MainCommandBar" Grid.Row="0" MinHeight="58"
+                    DefaultLabelPosition="Right" IsDynamicOverflowEnabled="True">
+            <CommandBar.Content>
+                <Grid x:Name="TitleBarRegion" Width="510" MinWidth="320" Margin="8,0,14,0" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="42" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Image Width="38" Height="38" Source="ms-appx:///Assets/NovaEmail.png"
+                           AutomationProperties.Name="Nova Email logo" />
+                    <AutoSuggestBox x:Name="SearchBox" Grid.Column="1" Height="38"
+                                    VerticalAlignment="Center" PlaceholderText="Search Mail"
+                                    QueryIcon="Find" TextChanged="SearchBox_TextChanged"
+                                    AutomationProperties.Name="Search messages in the selected account or folder" />
+                </Grid>
+            </CommandBar.Content>
+            <AppBarButton Label="Calendar" Click="CalendarButton_Click">
+                <AppBarButton.Icon><SymbolIcon Symbol="Calendar" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton x:Name="ReplyButton" Label="Reply" Click="ReplyButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="MailReply" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="ReplyAllButton" Label="Reply All" Click="ReplyAllButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="MailReplyAll" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="ForwardButton" Label="Forward" Click="ForwardButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="MailForward" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton x:Name="SummarizeWithAssistantButton" Label="Summarize With AI"
+                          Click="SummarizeButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="Document" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="SuggestRepliesWithAssistantButton" Label="Suggest Replies"
+                          Click="SuggestRepliesButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="MailReply" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton Label="Settings" Click="SettingsButton_Click">
+                <AppBarButton.Icon><SymbolIcon Symbol="Setting" /></AppBarButton.Icon>
+            </AppBarButton>
+        </CommandBar>
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" />
-                <ColumnDefinition Width="380" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <CommandBar x:Name="MailboxActionBar" Grid.Row="1" MinHeight="48"
+                    DefaultLabelPosition="Right" IsDynamicOverflowEnabled="True">
+            <CommandBar.Content>
+                <ComboBox x:Name="CompactMailboxSelector" MinWidth="180" MaxWidth="280"
+                          Visibility="Collapsed" SelectionChanged="CompactMailboxSelector_SelectionChanged"
+                          AutomationProperties.Name="Select a mail folder in compact layout" />
+            </CommandBar.Content>
+            <AppBarButton x:Name="SyncButton" Label="Refresh" Click="SyncButton_Click">
+                <AppBarButton.Icon><SymbolIcon Symbol="Sync" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton Label="Select All" Click="SelectAllButton_Click">
+                <AppBarButton.Icon><SymbolIcon Symbol="SelectAll" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton Label="Select None" Click="SelectNoneButton_Click">
+                <AppBarButton.Icon><SymbolIcon Symbol="ClearSelection" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton x:Name="ArchiveSelectedMessagesButton" Label="Archive" Click="ArchiveSelectedMessagesButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="SaveLocal" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="DeleteSelectedMessagesButton" Label="Trash" Click="DeleteSelectedMessagesButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="Delete" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="RestoreSelectedMessagesButton" Label="Restore" Click="RestoreSelectedMessagesButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="Undo" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="BlockSelectedMessagesButton" Label="Block / Spam" Click="BlockSelectedMessagesButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="BlockContact" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton x:Name="MarkSelectedReadButton" Label="Mark Read" Click="MarkSelectedReadButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="Mail" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarButton x:Name="MarkSelectedUnreadButton" Label="Mark Unread" Click="MarkSelectedUnreadButton_Click" IsEnabled="False">
+                <AppBarButton.Icon><SymbolIcon Symbol="MailFilled" /></AppBarButton.Icon>
+            </AppBarButton>
+            <AppBarSeparator />
+            <AppBarButton x:Name="ContactsPaneToggleButton" Label="Contacts" Click="ContactsPaneToggleButton_Click">
+                <AppBarButton.Icon><SymbolIcon Symbol="Contact" /></AppBarButton.Icon>
+            </AppBarButton>
+        </CommandBar>
 
-            <Border Grid.Column="0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,1,0"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}">
-                <Grid Padding="12,18,12,12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="MAILBOX" Margin="12,0,0,10" FontSize="11" FontWeight="SemiBold" Opacity="0.62" />
-                    <ListView x:Name="FolderNavigation" Grid.Row="1" SelectionMode="Single"
-                              SelectionChanged="FolderNavigation_SelectionChanged">
-                        <ListViewItem Content="Inbox" Tag="Inbox" />
-                        <ListViewItem Content="Drafts" Tag="Drafts" />
-                        <ListViewItem Content="Outbox" Tag="Outbox" />
-                        <ListViewItem Content="Sent" Tag="Sent" />
-                        <ListViewItem Content="Contacts" Tag="Contacts" />
-                        <ListViewItem Content="Calendar" Tag="Calendar" />
-                        <ListViewItem Content="Settings" Tag="Settings" />
+        <Grid x:Name="AdaptiveMailboxLayout" Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="FolderColumn" Width="310" />
+                <ColumnDefinition x:Name="MessageColumn" Width="360" />
+                <ColumnDefinition x:Name="ReadingColumn" Width="*" />
+                <ColumnDefinition x:Name="ContactsColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="CompactMailboxLayout">
+                        <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="FolderColumn.Width" Value="0" />
+                            <Setter Target="FolderPane.Visibility" Value="Collapsed" />
+                            <Setter Target="CompactMailboxSelector.Visibility" Value="Visible" />
+                            <Setter Target="MessageColumn.Width" Value="280" />
+                            <Setter Target="ContactsColumn.Width" Value="0" />
+                            <Setter Target="ContactsPane.Visibility" Value="Collapsed" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="WideMailboxLayout">
+                        <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1100" /></VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="FolderColumn.Width" Value="310" />
+                            <Setter Target="FolderPane.Visibility" Value="Visible" />
+                            <Setter Target="CompactMailboxSelector.Visibility" Value="Collapsed" />
+                            <Setter Target="MessageColumn.Width" Value="360" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+
+            <Border x:Name="FolderPane" Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,1,0" Background="{ThemeResource LayerFillColorDefaultBrush}">
+                <Grid Padding="12,14,12,12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Button x:Name="SidebarComposeButton" Content="Compose" HorizontalAlignment="Stretch"
+                            Style="{StaticResource AccentButtonStyle}" Click="ComposeButton_Click" />
+                    <TextBlock Grid.Row="1" Text="Mail" Margin="10,18,0,7" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ListView x:Name="FolderNavigation" Grid.Row="2" SelectionMode="Single" SelectionChanged="FolderNavigation_SelectionChanged">
+                        <ListViewItem Tag="Inbox"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="Mail" /><TextBlock Text="Inbox" /></StackPanel></ListViewItem>
+                        <ListViewItem Tag="Drafts"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="Document" /><TextBlock Text="Drafts" /></StackPanel></ListViewItem>
+                        <ListViewItem Tag="Outbox"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="Send" /><TextBlock Text="Outbox" /></StackPanel></ListViewItem>
+                        <ListViewItem Tag="Sent"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="MailForward" /><TextBlock Text="Sent" /></StackPanel></ListViewItem>
+                        <ListViewItem Tag="Archive"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="SaveLocal" /><TextBlock Text="Archive" /></StackPanel></ListViewItem>
+                        <ListViewItem Tag="Trash"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="Delete" /><TextBlock Text="Trash" /></StackPanel></ListViewItem>
+                        <ListViewItem Tag="Junk"><StackPanel Orientation="Horizontal" Spacing="10"><SymbolIcon Symbol="BlockContact" /><TextBlock Text="Junk" /></StackPanel></ListViewItem>
                     </ListView>
-                    <Border Grid.Row="2" Padding="12" CornerRadius="10" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Demo safety" FontWeight="SemiBold" />
-                            <TextBlock Text="Send stages mail locally in Outbox. Nothing leaves this computer."
-                                       TextWrapping="Wrap" FontSize="12" Opacity="0.7" />
+                    <Grid Grid.Row="3" Margin="10,16,4,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock Text="Labels" Style="{StaticResource SubtitleTextBlockStyle}" /><Button Grid.Column="1" Content="+" Width="32" Height="30" Padding="0" Click="AddLabelButton_Click" />
+                    </Grid>
+                    <ListView x:Name="LabelNavigationList" Grid.Row="4" SelectionMode="Single" SelectionChanged="LabelNavigationList_SelectionChanged">
+                        <ListViewItem Tag="label:unread" Content="Unread" /><ListViewItem Tag="label:attachments" Content="Has attachments" /><ListViewItem Tag="label:followup" Content="Follow up" />
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <Border x:Name="MessageListColumn" Grid.Column="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+                <Grid x:Name="MailboxMessagePane">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <Grid Padding="16,14,12,10" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2"><TextBlock x:Name="FolderTitle" Text="Inbox" Style="{StaticResource TitleTextBlockStyle}" /><TextBlock x:Name="FolderCount" Opacity="0.65" /></StackPanel>
+                        <TextBlock x:Name="MessageSelectionCountText" Grid.Column="1" VerticalAlignment="Center" Opacity="0.72" />
+                    </Grid>
+                    <ListView x:Name="MessageList" Grid.Row="1" SelectionMode="Extended" SelectionChanged="MessageList_SelectionChanged">
+                        <ListView.ItemTemplate><DataTemplate x:DataType="local:MailItem">
+                            <Grid Padding="12,9" MinHeight="86" ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <Border Width="4" CornerRadius="2" Background="{StaticResource NovaAccentBrush}" />
+                                <StackPanel Grid.Column="1" Spacing="2"><TextBlock Text="{x:Bind Sender}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" /><TextBlock Text="{x:Bind Subject}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{x:Bind Preview}" FontSize="12" Opacity="0.68" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                <TextBlock Grid.Column="2" Text="{x:Bind DisplayTime}" FontSize="11" Opacity="0.65" />
+                            </Grid>
+                        </DataTemplate></ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <Grid x:Name="ContentColumn" Grid.Column="2">
+                <Grid x:Name="MessageDetailView" Padding="20">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid ColumnSpacing="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="7"><TextBlock x:Name="DetailSubject" Text="Select a message" Style="{StaticResource TitleTextBlockStyle}" TextWrapping="WrapWholeWords" />
+                            <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Width="38" Height="38" CornerRadius="19" Background="{StaticResource NovaAccentSoftBrush}"><TextBlock x:Name="DetailInitial" Text="N" Foreground="{StaticResource NovaAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" /></Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock x:Name="DetailSender" Text="Nova Email" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock x:Name="DetailRecipients" Text="Local demo mailbox" FontSize="12" Opacity="0.7" TextWrapping="Wrap" /></StackPanel>
+                            </Grid>
+                        </StackPanel>
+                        <Button x:Name="AttachmentButton" Grid.Column="1" Content="Attachments" IsEnabled="False" VerticalAlignment="Top">
+                            <Button.Flyout><Flyout Placement="BottomEdgeAlignedRight"><StackPanel x:Name="AttachmentPanel" Width="340" MaxWidth="420" Spacing="10" Visibility="Collapsed">
+                                <TextBlock x:Name="AttachmentHeading" Text="Attachments" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                <ItemsControl x:Name="AttachmentList"><ItemsControl.ItemTemplate><DataTemplate x:DataType="local:AttachmentItem">
+                                    <Grid Padding="0,5" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="{x:Bind FileName}" FontWeight="SemiBold" /><TextBlock Text="{x:Bind Detail}" FontSize="12" Opacity="0.65" /></StackPanel><Button Grid.Column="1" Content="Save a copy" Tag="{x:Bind Ordinal}" Click="SaveAttachmentButton_Click" />
+                                    </Grid>
+                                </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                            </StackPanel></Flyout></Button.Flyout>
+                        </Button>
+                    </Grid>
+                    <Border Grid.Row="1" Margin="0,12,0,0" Padding="12" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="8"><StackPanel Orientation="Horizontal" Spacing="10"><CheckBox x:Name="AiMessageConsentCheckBox" Content="Allow this message for this AI request" /><Button Content="Summarize With AI" Click="SummarizeButton_Click" /><Button Content="Suggest Replies" Click="SuggestRepliesButton_Click" /></StackPanel><TextBlock x:Name="AiResultText" Visibility="Collapsed" TextWrapping="Wrap" /></StackPanel>
+                    </Border>
+                    <Grid Grid.Row="3" Margin="0,16,0,0"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><TextBlock x:Name="DetailBody" Text="Choose a message from the list to read it here." FontSize="16" LineHeight="24" TextWrapping="Wrap" IsTextSelectionEnabled="True" /></ScrollViewer><WebView2 x:Name="HtmlMessageView" Visibility="Collapsed" MinHeight="420" NavigationStarting="HtmlMessageView_NavigationStarting" /></Grid>
+                    <Border x:Name="InlineReplyComposer" Grid.Row="4" Margin="0,12,0,0" Padding="14" Visibility="Collapsed" BorderBrush="{ThemeResource AccentFillColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                        <StackPanel Spacing="9"><Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock x:Name="InlineReplyHeading" Text="Reply" Style="{StaticResource SubtitleTextBlockStyle}" /><Button Grid.Column="1" Content="Expand" Click="ExpandInlineReplyButton_Click" /></Grid>
+                            <TextBlock x:Name="InlineReplyRecipients" Opacity="0.75" TextWrapping="Wrap" /><TextBox x:Name="InlineReplyBody" MinHeight="125" MaxHeight="240" AcceptsReturn="True" TextWrapping="Wrap" PlaceholderText="Write your reply" />
+                            <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Send" Style="{StaticResource AccentButtonStyle}" Click="StageInlineReplyButton_Click" /><Button Content="Draft Response With AI" Click="DraftInlineReplyWithAiButton_Click" /><Button Content="Cancel" Click="CancelInlineReplyButton_Click" /></StackPanel>
                         </StackPanel>
                     </Border>
                 </Grid>
-            </Border>
 
-            <Border x:Name="MessageListColumn" Grid.Column="1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                    BorderThickness="0,1,1,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <Grid Padding="18,16,14,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="FolderTitle" Text="Inbox" FontSize="23" FontWeight="SemiBold" />
-                        <TextBlock x:Name="FolderCount" Grid.Column="1" VerticalAlignment="Center" Opacity="0.6" />
+                <Grid x:Name="ComposeLayer" Padding="24,18" Visibility="Collapsed" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2"><TextBlock x:Name="ComposeHeading" Text="New message" Style="{StaticResource TitleTextBlockStyle}" /><TextBlock Text="Send stages the message in the protected local Outbox." Opacity="0.7" /></StackPanel>
+                        <Button Grid.Column="1" Content="Polish With AI" Click="PolishDraftButton_Click" /><Button Grid.Column="2" Content="Send" Style="{StaticResource AccentButtonStyle}" Click="StageOutboxButton_Click" /><Button Grid.Column="3" Content="Close" Click="CloseComposeButton_Click" />
                     </Grid>
-                    <ListView x:Name="MessageList" Grid.Row="1" SelectionMode="Single"
-                              SelectionChanged="MessageList_SelectionChanged">
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="local:MailItem">
-                                <Grid Padding="12,10" MinHeight="92">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="42" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource NovaAccentSoftBrush}"
-                                            VerticalAlignment="Top">
-                                        <TextBlock Text="{x:Bind SenderInitial}" Foreground="{StaticResource NovaAccentBrush}"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="{x:Bind Sender}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{x:Bind Subject}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{x:Bind Preview}" FontSize="12" Opacity="0.62"
-                                                   TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{x:Bind DisplayTime}" FontSize="11" Opacity="0.58" />
-                                </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </Grid>
-            </Border>
-
-            <Grid x:Name="ContentColumn" Grid.Column="2" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
-                <ScrollViewer x:Name="MessageDetailView">
-                    <Grid Padding="34,26,38,40" MaxWidth="920" HorizontalAlignment="Stretch">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <TextBlock x:Name="DetailSubject" Text="Select a message" FontSize="28" FontWeight="SemiBold"
-                                   TextWrapping="Wrap" />
-                        <Grid Grid.Row="1" Margin="0,20,0,18">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="42" Height="42" CornerRadius="21" Background="{StaticResource NovaAccentSoftBrush}">
-                                <TextBlock x:Name="DetailInitial" Text="N" Foreground="{StaticResource NovaAccentBrush}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <TextBlock x:Name="DetailSender" Text="Nova Email" FontWeight="SemiBold" />
-                                <TextBlock x:Name="DetailRecipients" Text="Local demo mailbox" FontSize="12" Opacity="0.65" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-                                <Button Content="Reply" Click="ReplyButton_Click" />
-                                <Button Content="More" IsEnabled="False" />
-                            </StackPanel>
+                    <ScrollViewer Grid.Row="1" Margin="0,14,0,12" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Spacing="9" MaxWidth="1180">
+                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="From" VerticalAlignment="Center" FontWeight="SemiBold" /><TextBox x:Name="ComposeFromBox" Grid.Column="1" IsReadOnly="True" /><Button Grid.Column="2" Content="Contacts" Click="ContactsPaneToggleButton_Click" /></Grid>
+                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="To" VerticalAlignment="Center" FontWeight="SemiBold" /><TextBox x:Name="ComposeToBox" Grid.Column="1" /></Grid>
+                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Cc" VerticalAlignment="Center" FontWeight="SemiBold" /><TextBox x:Name="ComposeCcBox" Grid.Column="1" /></Grid>
+                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Bcc" VerticalAlignment="Center" FontWeight="SemiBold" /><TextBox x:Name="ComposeBccBox" Grid.Column="1" /></Grid>
+                        <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="68" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="Subject" VerticalAlignment="Center" FontWeight="SemiBold" /><TextBox x:Name="ComposeSubjectBox" Grid.Column="1" /></Grid>
+                        <Border BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8"><StackPanel>
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"><StackPanel Orientation="Horizontal" Spacing="5" Padding="8,7">
+                                <Button Content="B" FontWeight="Bold" Click="ComposeBoldButton_Click" /><Button Content="I" FontStyle="Italic" Click="ComposeItalicButton_Click" /><Button Content="U" Click="ComposeUnderlineButton_Click" />
+                                <ComboBox x:Name="ComposeFontSelector" Width="150" SelectedIndex="0" SelectionChanged="ComposeFontSelector_SelectionChanged"><ComboBoxItem Content="Segoe UI" Tag="Segoe UI" /><ComboBoxItem Content="Arial" Tag="Arial" /><ComboBoxItem Content="Calibri" Tag="Calibri" /><ComboBoxItem Content="Georgia" Tag="Georgia" /><ComboBoxItem Content="Consolas" Tag="Consolas" /></ComboBox>
+                                <ComboBox x:Name="ComposeFontSizeSelector" Width="78" SelectedIndex="2" SelectionChanged="ComposeFontSizeSelector_SelectionChanged"><ComboBoxItem Content="10" Tag="10" /><ComboBoxItem Content="11" Tag="11" /><ComboBoxItem Content="12" Tag="12" /><ComboBoxItem Content="14" Tag="14" /><ComboBoxItem Content="18" Tag="18" /><ComboBoxItem Content="24" Tag="24" /></ComboBox>
+                                <DropDownButton Content="Text color"><DropDownButton.Flyout><MenuFlyout><MenuFlyoutItem Text="Black" Tag="#FF000000" Click="ComposeTextColorItem_Click" /><MenuFlyoutItem Text="Red" Tag="#FFC42B1C" Click="ComposeTextColorItem_Click" /><MenuFlyoutItem Text="Green" Tag="#FF107C10" Click="ComposeTextColorItem_Click" /><MenuFlyoutItem Text="Blue" Tag="#FF0067C0" Click="ComposeTextColorItem_Click" /><MenuFlyoutItem Text="Purple" Tag="#FF744DA9" Click="ComposeTextColorItem_Click" /></MenuFlyout></DropDownButton.Flyout></DropDownButton>
+                                <DropDownButton Content="Highlight"><DropDownButton.Flyout><MenuFlyout><MenuFlyoutItem Text="None" Tag="#00FFFFFF" Click="ComposeHighlightColorItem_Click" /><MenuFlyoutItem Text="Yellow" Tag="#FFFFFF00" Click="ComposeHighlightColorItem_Click" /><MenuFlyoutItem Text="Light blue" Tag="#FFADD8E6" Click="ComposeHighlightColorItem_Click" /><MenuFlyoutItem Text="Light green" Tag="#FF90EE90" Click="ComposeHighlightColorItem_Click" /></MenuFlyout></DropDownButton.Flyout></DropDownButton>
+                                <DropDownButton Content="Align"><DropDownButton.Flyout><MenuFlyout><MenuFlyoutItem Text="Left" Tag="Left" Click="ComposeAlignmentItem_Click" /><MenuFlyoutItem Text="Center" Tag="Center" Click="ComposeAlignmentItem_Click" /><MenuFlyoutItem Text="Right" Tag="Right" Click="ComposeAlignmentItem_Click" /></MenuFlyout></DropDownButton.Flyout></DropDownButton>
+                                <Button Content="1." Click="ComposeNumberingButton_Click" /><Button Content="•" Click="ComposeBulletsButton_Click" /><Button Content="⇤" Click="ComposeIndentLeftButton_Click" /><Button Content="⇥" Click="ComposeIndentRightButton_Click" />
+                            </StackPanel></ScrollViewer>
+                            <RichEditBox x:Name="ComposeBodyInput" MinHeight="330" TextWrapping="Wrap" VerticalContentAlignment="Top" PlaceholderText="Write your message" />
+                        </StackPanel></Border>
+                        <Expander Header="Advanced Message Options" IsExpanded="False"><StackPanel Spacing="9" Padding="0,8,0,0"><TextBox x:Name="ComposeHtmlInput" Header="Optional HTML Source" MinHeight="120" AcceptsReturn="True" TextWrapping="Wrap" /><ComboBox x:Name="ComposePrioritySelector" Header="Priority" SelectedIndex="0"><ComboBoxItem Content="Normal" Tag="Normal" /><ComboBoxItem Content="Urgent" Tag="Urgent" /><ComboBoxItem Content="Non-Urgent" Tag="NonUrgent" /></ComboBox><CheckBox x:Name="ComposeReadReceiptCheckBox" Content="Request a read receipt" /></StackPanel></Expander>
+                        <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><StackPanel Orientation="Horizontal" Spacing="10"><Button Content="Add Attachments…" Click="AttachFilesButton_Click" /><TextBlock x:Name="ComposeAttachmentSummary" Text="No attachments" VerticalAlignment="Center" /></StackPanel>
+                            <ListView x:Name="ComposeAttachmentList" Grid.Row="1" MaxHeight="112" SelectionMode="None"><ListView.ItemTemplate><DataTemplate x:DataType="local:ComposeAttachmentItem"><Grid Padding="8,4" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" Text="{x:Bind Detail}" FontSize="12" Opacity="0.65" /><Button Grid.Column="2" Content="Remove" Tag="{x:Bind Id}" Click="RemoveComposeAttachmentButton_Click" /></Grid></DataTemplate></ListView.ItemTemplate></ListView>
                         </Grid>
-                        <Border Grid.Row="2" Padding="14" CornerRadius="10" Margin="0,0,0,18"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                            <StackPanel Spacing="10">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <CheckBox x:Name="AiMessageConsentCheckBox" Content="Allow this message to be processed for this AI request" />
-                                    <Button Content="Summarize with AI" Click="SummarizeButton_Click" />
-                                </StackPanel>
-                                <TextBlock x:Name="AiResultText" Visibility="Collapsed" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                        <Border x:Name="AttachmentPanel" Grid.Row="3" Visibility="Collapsed" Padding="14"
-                                CornerRadius="10" Margin="0,0,0,18"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                            <StackPanel Spacing="10">
-                                <TextBlock x:Name="AttachmentHeading" Text="Attachments" FontWeight="SemiBold" />
-                                <ItemsControl x:Name="AttachmentList">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="local:AttachmentItem">
-                                            <Grid Padding="0,5" ColumnSpacing="12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Spacing="2">
-                                                    <TextBlock Text="{x:Bind FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{x:Bind Detail}" FontSize="12" Opacity="0.65" />
-                                                </StackPanel>
-                                                <Button Grid.Column="1" Content="Save a copy" Tag="{x:Bind Ordinal}"
-                                                        Click="SaveAttachmentButton_Click" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-                        <Grid Grid.Row="4">
-                            <TextBlock x:Name="DetailBody" Text="Choose a message from the list to read it here."
-                                       FontSize="15" LineHeight="24" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                            <WebView2 x:Name="HtmlMessageView" Visibility="Collapsed" MinHeight="520"
-                                      NavigationStarting="HtmlMessageView_NavigationStarting" />
-                        </Grid>
-                    </Grid>
-                </ScrollViewer>
-
-                <ScrollViewer x:Name="SettingsView" Visibility="Collapsed">
-                    <StackPanel Padding="34,26,38,40" MaxWidth="760" HorizontalAlignment="Left" Spacing="18">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" />
-                            <TextBlock Text="Configure a standards-based mail account and optional AI service. Passwords and API keys are stored in Windows Credential Manager."
-                                       TextWrapping="Wrap" Opacity="0.7" />
-                        </StackPanel>
-                        <TextBlock Text="Mail account" FontSize="18" FontWeight="SemiBold" />
-                        <Grid ColumnSpacing="12" RowSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBox x:Name="DisplayNameBox" Header="Display name" PlaceholderText="Your name" />
-                            <TextBox x:Name="EmailAddressBox" Grid.Column="1" Header="Email address" PlaceholderText="you@example.com" />
-                            <TextBox x:Name="ImapHostBox" Grid.Row="1" Header="IMAP host" PlaceholderText="imap.example.com" />
-                            <NumberBox x:Name="ImapPortBox" Grid.Row="1" Grid.Column="1" Header="IMAP port" Value="993" SpinButtonPlacementMode="Compact" />
-                            <TextBox x:Name="SmtpHostBox" Grid.Row="2" Header="SMTP host" PlaceholderText="smtp.example.com" />
-                            <NumberBox x:Name="SmtpPortBox" Grid.Row="2" Grid.Column="1" Header="SMTP port" Value="465" SpinButtonPlacementMode="Compact" />
-                            <TextBox x:Name="AccountUserBox" Grid.Row="3" Header="Login name" PlaceholderText="Usually your email address" />
-                            <PasswordBox x:Name="AccountPasswordBox" Grid.Row="3" Grid.Column="1" Header="Password or app password" />
-                            <ComboBox x:Name="ImapTlsBox" Grid.Row="4" Header="IMAP security" SelectedIndex="0">
-                                <ComboBoxItem Content="TLS on connect" Tag="ImplicitTls" />
-                                <ComboBoxItem Content="Require STARTTLS" Tag="RequiredStartTls" />
-                            </ComboBox>
-                            <ComboBox x:Name="SmtpTlsBox" Grid.Row="4" Grid.Column="1" Header="SMTP security" SelectedIndex="0">
-                                <ComboBoxItem Content="TLS on connect" Tag="ImplicitTls" />
-                                <ComboBoxItem Content="Require STARTTLS" Tag="RequiredStartTls" />
-                            </ComboBox>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Save account" Style="{StaticResource AccentButtonStyle}" Click="SaveAccountButton_Click" />
-                            <Button Content="Test IMAP" Click="TestImapButton_Click" />
-                        </StackPanel>
-                        <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,6" />
-                        <TextBlock Text="AI assistant (optional)" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="Nova Email sends message content only after you check the per-request consent box and click an AI action."
-                                   TextWrapping="Wrap" Opacity="0.7" />
-                        <TextBox x:Name="AiEndpointBox" Header="OpenWebUI HTTPS origin" PlaceholderText="https://localhost:3000/" />
-                        <TextBox x:Name="AiModelBox" Header="Model" PlaceholderText="qwen2.5:7b" />
-                        <PasswordBox x:Name="AiApiKeyBox" Header="API key" />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Save AI settings" Style="{StaticResource AccentButtonStyle}" Click="SaveAiSettingsButton_Click" />
-                            <TextBlock Text="AI remains off until an explicit action." VerticalAlignment="Center" Opacity="0.65" />
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-
-                <Grid x:Name="ContactsView" Visibility="Collapsed" Padding="28,24,32,32" ColumnSpacing="24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="310" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Contacts" FontSize="28" FontWeight="SemiBold" />
-                                <TextBlock x:Name="ContactCountText" Text="0 contacts" Opacity="0.65" />
-                            </StackPanel>
-                            <Button Grid.Column="1" Content="New contact" Style="{StaticResource AccentButtonStyle}"
-                                    VerticalAlignment="Center" Click="NewContactButton_Click" />
-                        </Grid>
-                        <ListView x:Name="ContactList" Grid.Row="1" SelectionMode="Single"
-                                  SelectionChanged="ContactList_SelectionChanged">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="local:ContactItem">
-                                    <Grid Padding="10" MinHeight="68">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="42" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="34" Height="34" CornerRadius="17" Background="{StaticResource NovaAccentSoftBrush}">
-                                            <TextBlock Text="{x:Bind Initial}" Foreground="{StaticResource NovaAccentBrush}"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{x:Bind SecondaryText}" FontSize="12" Opacity="0.65" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-                    <ScrollViewer Grid.Column="1">
-                        <StackPanel MaxWidth="680" HorizontalAlignment="Left" Spacing="16">
-                            <StackPanel Spacing="4">
-                                <TextBlock x:Name="ContactEditorTitle" Text="New contact" FontSize="24" FontWeight="SemiBold" />
-                                <TextBlock x:Name="ContactEditorHint" Text="Contacts stay on this computer and are available when composing mail."
-                                           TextWrapping="Wrap" Opacity="0.65" />
-                            </StackPanel>
-                            <TextBox x:Name="ContactNameBox" Header="Name" PlaceholderText="Jordan Avery" />
-                            <TextBox x:Name="ContactEmailBox" Header="Email address" PlaceholderText="jordan@example.com" />
-                            <TextBox x:Name="ContactNotesBox" Header="Notes" AcceptsReturn="True" TextWrapping="Wrap"
-                                     MinHeight="140" VerticalContentAlignment="Top" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button x:Name="SaveContactButton" Content="Save contact" Style="{StaticResource AccentButtonStyle}" Click="SaveContactButton_Click" />
-                                <Button x:Name="DeleteContactButton" Content="Remove contact" Click="DeleteContactButton_Click"
-                                        IsEnabled="False" />
-                            </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
+                        <Border Padding="12" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"><CheckBox x:Name="AiDraftConsentCheckBox" Content="Allow this draft and reply context for this AI request" /></Border>
+                    </StackPanel></ScrollViewer>
+                    <Grid Grid.Row="2" ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Button Content="Save Draft" Click="SaveDraftButton_Click" /><TextBlock x:Name="ComposeSaveStatusText" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Text="Messages remain local in Outbox until sending is implemented." Opacity="0.7" /></Grid>
                 </Grid>
 
-                <Grid x:Name="CalendarView" Visibility="Collapsed" Padding="28,24,32,32" ColumnSpacing="24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="350" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid Grid.Column="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid Margin="0,0,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Spacing="2">
-                                <TextBlock Text="Calendar" FontSize="28" FontWeight="SemiBold" />
-                                <TextBlock x:Name="CalendarCountText" Text="0 events" Opacity="0.65" />
-                            </StackPanel>
-                            <Button Grid.Column="1" Content="New event" Style="{StaticResource AccentButtonStyle}"
-                                    VerticalAlignment="Center" Click="NewCalendarEventButton_Click" />
-                        </Grid>
-                        <ListView x:Name="CalendarList" Grid.Row="1" SelectionMode="Single"
-                                  SelectionChanged="CalendarList_SelectionChanged">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="local:CalendarItem">
-                                    <Grid Padding="10" MinHeight="82">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="48" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="42" Height="54" CornerRadius="9" Background="{StaticResource NovaAccentSoftBrush}">
-                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
-                                                <TextBlock Text="{x:Bind Month}" Foreground="{StaticResource NovaAccentBrush}"
-                                                           FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                                                <TextBlock Text="{x:Bind Day}" Foreground="{StaticResource NovaAccentBrush}"
-                                                           FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
-                                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{x:Bind DisplayRange}" FontSize="12" Opacity="0.72" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{x:Bind LocationText}" FontSize="12" Opacity="0.58" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
+                <ScrollViewer x:Name="SettingsView" Visibility="Collapsed"><StackPanel Padding="34,26,38,40" MaxWidth="780" HorizontalAlignment="Left" Spacing="18">
+                    <StackPanel Spacing="4"><TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" /><TextBlock Text="Configure appearance, a standards-based mail account, and the optional AI assistant." TextWrapping="Wrap" Opacity="0.7" /></StackPanel>
+                    <TextBlock Text="Appearance" FontSize="18" FontWeight="SemiBold" /><ComboBox x:Name="ThemeSelector" Header="Theme" Width="320" HorizontalAlignment="Left" SelectionChanged="ThemeSelector_SelectionChanged" />
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,6" /><TextBlock Text="Mail account" FontSize="18" FontWeight="SemiBold" />
+                    <Grid ColumnSpacing="12" RowSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <TextBox x:Name="DisplayNameBox" Header="Display name" PlaceholderText="Your name" /><TextBox x:Name="EmailAddressBox" Grid.Column="1" Header="Email address" PlaceholderText="you@example.com" /><TextBox x:Name="ImapHostBox" Grid.Row="1" Header="IMAP host" PlaceholderText="imap.example.com" /><NumberBox x:Name="ImapPortBox" Grid.Row="1" Grid.Column="1" Header="IMAP port" Value="993" SpinButtonPlacementMode="Compact" /><TextBox x:Name="SmtpHostBox" Grid.Row="2" Header="SMTP host" PlaceholderText="smtp.example.com" /><NumberBox x:Name="SmtpPortBox" Grid.Row="2" Grid.Column="1" Header="SMTP port" Value="465" SpinButtonPlacementMode="Compact" /><TextBox x:Name="AccountUserBox" Grid.Row="3" Header="Login name" PlaceholderText="Usually your email address" /><PasswordBox x:Name="AccountPasswordBox" Grid.Row="3" Grid.Column="1" Header="Password or app password" />
+                        <ComboBox x:Name="ImapTlsBox" Grid.Row="4" Header="IMAP security" SelectedIndex="0"><ComboBoxItem Content="TLS on connect" Tag="ImplicitTls" /><ComboBoxItem Content="Require STARTTLS" Tag="RequiredStartTls" /></ComboBox><ComboBox x:Name="SmtpTlsBox" Grid.Row="4" Grid.Column="1" Header="SMTP security" SelectedIndex="0"><ComboBoxItem Content="TLS on connect" Tag="ImplicitTls" /><ComboBoxItem Content="Require STARTTLS" Tag="RequiredStartTls" /></ComboBox>
                     </Grid>
-                    <ScrollViewer Grid.Column="1">
-                        <StackPanel MaxWidth="700" HorizontalAlignment="Left" Spacing="16">
-                            <StackPanel Spacing="4">
-                                <TextBlock x:Name="CalendarEditorTitle" Text="New event" FontSize="24" FontWeight="SemiBold" />
-                                <TextBlock x:Name="CalendarEditorHint" Text="Local events stay on this computer."
-                                           TextWrapping="Wrap" Opacity="0.65" />
-                            </StackPanel>
-                            <TextBox x:Name="CalendarTitleBox" Header="Title" PlaceholderText="Planning session" />
-                            <TextBox x:Name="CalendarLocationBox" Header="Location" PlaceholderText="Conference room or video call" />
-                            <CheckBox x:Name="CalendarAllDayCheckBox" Content="All day" Click="CalendarAllDayCheckBox_Click" />
-                            <Grid ColumnSpacing="12" RowSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <DatePicker x:Name="CalendarStartDatePicker" Header="Start date" />
-                                <TimePicker x:Name="CalendarStartTimePicker" Grid.Column="1" Header="Start time" ClockIdentifier="12HourClock" />
-                                <DatePicker x:Name="CalendarEndDatePicker" Grid.Row="1" Header="End date" />
-                                <TimePicker x:Name="CalendarEndTimePicker" Grid.Row="1" Grid.Column="1" Header="End time" ClockIdentifier="12HourClock" />
-                            </Grid>
-                            <TextBox x:Name="CalendarNotesBox" Header="Notes" AcceptsReturn="True" TextWrapping="Wrap"
-                                     MinHeight="130" VerticalContentAlignment="Top" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button x:Name="SaveCalendarEventButton" Content="Save event" Style="{StaticResource AccentButtonStyle}" Click="SaveCalendarEventButton_Click" />
-                                <Button x:Name="DeleteCalendarEventButton" Content="Remove event" Click="DeleteCalendarEventButton_Click"
-                                        IsEnabled="False" />
-                            </StackPanel>
-                        </StackPanel>
-                    </ScrollViewer>
+                    <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Save account" Style="{StaticResource AccentButtonStyle}" Click="SaveAccountButton_Click" /><Button Content="Test IMAP" Click="TestImapButton_Click" /></StackPanel>
+                    <Rectangle Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="0,6" /><TextBlock Text="AI assistant (optional)" FontSize="18" FontWeight="SemiBold" /><TextBlock Text="Message content is shared only after explicit per-request consent." TextWrapping="Wrap" Opacity="0.7" /><TextBox x:Name="AiEndpointBox" Header="OpenWebUI HTTPS origin" PlaceholderText="https://localhost:3000/" /><TextBox x:Name="AiModelBox" Header="Model" PlaceholderText="qwen2.5:7b" /><PasswordBox x:Name="AiApiKeyBox" Header="API key" /><Button Content="Save AI settings" HorizontalAlignment="Left" Style="{StaticResource AccentButtonStyle}" Click="SaveAiSettingsButton_Click" />
+                </StackPanel></ScrollViewer>
+
+                <Grid x:Name="ContactsView" Visibility="Collapsed" Padding="28,24,32,32" ColumnSpacing="24"><Grid.ColumnDefinitions><ColumnDefinition Width="310" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><Grid Margin="0,0,0,14"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Contacts" FontSize="28" FontWeight="SemiBold" /><TextBlock x:Name="ContactCountText" Text="0 contacts" Opacity="0.65" /></StackPanel><Button Grid.Column="1" Content="New contact" Style="{StaticResource AccentButtonStyle}" Click="NewContactButton_Click" /></Grid><ListView x:Name="ContactList" Grid.Row="1" SelectionMode="Single" SelectionChanged="ContactList_SelectionChanged"><ListView.ItemTemplate><DataTemplate x:DataType="local:ContactItem"><Grid Padding="10" MinHeight="64"><StackPanel><TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{x:Bind SecondaryText}" FontSize="12" Opacity="0.65" /></StackPanel></Grid></DataTemplate></ListView.ItemTemplate></ListView></Grid>
+                    <ScrollViewer Grid.Column="1"><StackPanel MaxWidth="680" HorizontalAlignment="Left" Spacing="16"><StackPanel><TextBlock x:Name="ContactEditorTitle" Text="New contact" FontSize="24" FontWeight="SemiBold" /><TextBlock x:Name="ContactEditorHint" Text="Contacts stay on this computer." Opacity="0.65" /></StackPanel><TextBox x:Name="ContactNameBox" Header="Name" /><TextBox x:Name="ContactEmailBox" Header="Email address" /><TextBox x:Name="ContactNotesBox" Header="Notes" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="140" /><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="SaveContactButton" Content="Save contact" Style="{StaticResource AccentButtonStyle}" Click="SaveContactButton_Click" /><Button x:Name="DeleteContactButton" Content="Remove contact" Click="DeleteContactButton_Click" IsEnabled="False" /></StackPanel></StackPanel></ScrollViewer>
+                </Grid>
+
+                <Grid x:Name="CalendarView" Visibility="Collapsed" Padding="28,24,32,32" ColumnSpacing="24"><Grid.ColumnDefinitions><ColumnDefinition Width="350" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><Grid Margin="0,0,0,14"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Calendar" FontSize="28" FontWeight="SemiBold" /><TextBlock x:Name="CalendarCountText" Text="0 events" Opacity="0.65" /></StackPanel><Button Grid.Column="1" Content="New event" Style="{StaticResource AccentButtonStyle}" Click="NewCalendarEventButton_Click" /></Grid><ListView x:Name="CalendarList" Grid.Row="1" SelectionMode="Single" SelectionChanged="CalendarList_SelectionChanged"><ListView.ItemTemplate><DataTemplate x:DataType="local:CalendarItem"><Grid Padding="10" MinHeight="76"><StackPanel><TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" /><TextBlock Text="{x:Bind DisplayRange}" FontSize="12" Opacity="0.72" /><TextBlock Text="{x:Bind LocationText}" FontSize="12" Opacity="0.58" /></StackPanel></Grid></DataTemplate></ListView.ItemTemplate></ListView></Grid>
+                    <ScrollViewer Grid.Column="1"><StackPanel MaxWidth="700" HorizontalAlignment="Left" Spacing="16"><StackPanel><TextBlock x:Name="CalendarEditorTitle" Text="New event" FontSize="24" FontWeight="SemiBold" /><TextBlock x:Name="CalendarEditorHint" Text="Local events stay on this computer." Opacity="0.65" /></StackPanel><TextBox x:Name="CalendarTitleBox" Header="Title" /><TextBox x:Name="CalendarLocationBox" Header="Location" /><CheckBox x:Name="CalendarAllDayCheckBox" Content="All day" Click="CalendarAllDayCheckBox_Click" />
+                        <Grid ColumnSpacing="12" RowSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><DatePicker x:Name="CalendarStartDatePicker" Header="Start date" /><TimePicker x:Name="CalendarStartTimePicker" Grid.Column="1" Header="Start time" ClockIdentifier="12HourClock" /><DatePicker x:Name="CalendarEndDatePicker" Grid.Row="1" Header="End date" /><TimePicker x:Name="CalendarEndTimePicker" Grid.Row="1" Grid.Column="1" Header="End time" ClockIdentifier="12HourClock" /></Grid>
+                        <TextBox x:Name="CalendarNotesBox" Header="Notes" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="130" /><StackPanel Orientation="Horizontal" Spacing="8"><Button x:Name="SaveCalendarEventButton" Content="Save event" Style="{StaticResource AccentButtonStyle}" Click="SaveCalendarEventButton_Click" /><Button x:Name="DeleteCalendarEventButton" Content="Remove event" Click="DeleteCalendarEventButton_Click" IsEnabled="False" /></StackPanel>
+                    </StackPanel></ScrollViewer>
                 </Grid>
             </Grid>
-        </Grid>
 
-        <InfoBar x:Name="StatusBar" Grid.Row="2" IsOpen="True" IsClosable="False"
-                 Severity="Informational" Message="Starting Nova Email…" />
-
-        <Grid x:Name="ComposeLayer" Grid.RowSpan="3" Visibility="Collapsed" Background="#66000000">
-            <Border Width="680" HorizontalAlignment="Right" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-                    BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="1,0,0,0">
-                <Grid Padding="26,22">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="ComposeHeading" Text="New message" FontSize="22" FontWeight="SemiBold" />
-                        <Button Grid.Column="1" Content="Close" Click="CloseComposeButton_Click" />
-                    </Grid>
-                    <TextBox x:Name="ComposeToBox" Grid.Row="1" Header="To" Margin="0,14,0,0" />
-                    <TextBox x:Name="ComposeCcBox" Grid.Row="2" Header="Cc" />
-                    <TextBox x:Name="ComposeSubjectBox" Grid.Row="3" Header="Subject" />
-                    <TextBox x:Name="ComposeBodyBox" Grid.Row="4" Header="Message" AcceptsReturn="True"
-                             TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="260" />
-                    <Grid Grid.Row="5" Margin="0,10,0,0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <Button Content="Attach files" Click="AttachFilesButton_Click" />
-                            <TextBlock x:Name="ComposeAttachmentSummary" Text="No attachments"
-                                       VerticalAlignment="Center" FontSize="12" Opacity="0.65" />
-                        </StackPanel>
-                        <ListView x:Name="ComposeAttachmentList" Grid.Row="1" Margin="0,6,0,0"
-                                  MaxHeight="112" SelectionMode="None">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="local:ComposeAttachmentItem">
-                                    <Grid Padding="8,4" ColumnSpacing="10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="1" Text="{x:Bind Detail}" FontSize="12" Opacity="0.65" />
-                                        <Button Grid.Column="2" Content="Remove" Tag="{x:Bind Id}"
-                                                Click="RemoveComposeAttachmentButton_Click" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-                    <Border Grid.Row="6" Padding="12" Margin="0,12,0,12" CornerRadius="8"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <CheckBox x:Name="AiDraftConsentCheckBox" Content="Allow this draft and reply context for this AI request" />
-                            <Button Content="Polish with AI" Click="PolishDraftButton_Click" />
-                        </StackPanel>
-                    </Border>
-                    <Grid Grid.Row="7">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Button Content="Stage in Outbox" Style="{StaticResource AccentButtonStyle}" Click="StageOutboxButton_Click" />
-                        <Button Grid.Column="1" Content="Save draft" Margin="8,0,0,0" Click="SaveDraftButton_Click" />
-                        <TextBlock Grid.Column="2" Text="Demo mode never submits SMTP." HorizontalAlignment="Right"
-                                   VerticalAlignment="Center" FontSize="12" Opacity="0.65" />
-                    </Grid>
-                </Grid>
+            <Border x:Name="ContactsPane" Grid.Column="3" Width="340" Visibility="Collapsed" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1,0,0,0" Padding="14">
+                <Grid RowSpacing="10"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="Contacts" Style="{StaticResource SubtitleTextBlockStyle}" /><Button Grid.Column="1" Content="Close" Click="CloseContactsPaneButton_Click" /></Grid><TextBox x:Name="ContactsPaneSearchBox" Grid.Row="1" PlaceholderText="Search Contacts" TextChanged="ContactsPaneSearchBox_TextChanged" /><ListView x:Name="ContactsPaneList" Grid.Row="2" SelectionMode="Single" DoubleTapped="ContactsPaneList_DoubleTapped"><ListView.ItemTemplate><DataTemplate x:DataType="local:ContactItem"><StackPanel Padding="2,7"><TextBlock Text="{x:Bind DisplayName}" FontWeight="SemiBold" /><TextBlock Text="{x:Bind EmailAddress}" Opacity="0.72" /></StackPanel></DataTemplate></ListView.ItemTemplate></ListView><Button Grid.Row="3" Content="Manage Contacts" Click="ManageContactsButton_Click" HorizontalAlignment="Stretch" /></Grid>
             </Border>
         </Grid>
+
+        <InfoBar x:Name="StatusBar" Grid.Row="3" IsOpen="True" IsClosable="False" Severity="Informational" Message="Starting Nova Email…" />
     </Grid>
 </Window>

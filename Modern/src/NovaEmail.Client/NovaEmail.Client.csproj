@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>NovaEmail.Client</RootNamespace>
+    <ApplicationIcon>Assets\NovaEmail.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -23,5 +24,13 @@
     <ProjectReference Include="../NovaEmail.Safety/NovaEmail.Safety.csproj" />
     <ProjectReference Include="../NovaEmail.Storage/NovaEmail.Storage.csproj" />
     <ProjectReference Include="../NovaEmail.Sync/NovaEmail.Sync.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Assets\NovaEmail.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\NovaEmail.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

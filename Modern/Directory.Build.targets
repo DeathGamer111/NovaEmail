@@ -4,7 +4,7 @@
          intentional: global.json selection is based on the caller's working
          directory, so invoking a project by path from the repository root must
          still fail closed instead of silently selecting a preview or newer SDK. -->
-    <NovaEmailRequiredDotNetSdkVersion>10.0.400</NovaEmailRequiredDotNetSdkVersion>
+    <NovaEmailRequiredDotNetSdkVersion>10.0.401</NovaEmailRequiredDotNetSdkVersion>
   </PropertyGroup>
 
   <Target Name="EnforceNovaEmailDotNetSdk"

@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
         try
         {
             InitializeComponent();
+            InitializeRestoredUi();
             ComposeAttachmentList.ItemsSource = _composeAttachments;
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(TitleBarRegion);
@@ -107,7 +108,7 @@ public sealed partial class MainWindow : Window
             Recipients = "demo@novaemail.local",
             Subject = "Welcome to your private Nova Email demo",
             Preview = "Compose, reply, search, stage mail in Outbox, and try consent-gated AI.",
-            Body = "Welcome to Nova Email.\n\nThis local demo is intentionally safe: clicking Stage in Outbox stores a complete MIME message on this computer but does not contact an SMTP server. Configure an IMAP/SMTP account in Settings when you are ready to test connectivity.\n\nAI actions are also explicit. Nova Email sends message content to the configured assistant only after you check the consent box for that request.",
+            Body = "Welcome to Nova Email.\n\nThis local demo is intentionally safe: clicking Send stores a complete MIME message in Outbox on this computer but does not contact an SMTP server. Configure an IMAP/SMTP account in Settings when you are ready to test connectivity.\n\nAI actions are also explicit. Nova Email sends message content to the configured assistant only after you check the consent box for that request.",
             Timestamp = now.AddMinutes(-18),
         });
         _inbox.Add(new MailItem
@@ -150,6 +151,22 @@ public sealed partial class MainWindow : Window
         if (_store is null) return;
         foreach (var draft in await _store.ReadLatestDraftsAsync())
         {
+            var body = draft.BodySnippet;
+            var hasAttachments = false;
+            try
+            {
+                var mime = await SafeMimeParser.ParseAsync(
+                    await _store.ReadDraftMimeAsync(draft.DraftId, draft.Revision));
+                body = !string.IsNullOrWhiteSpace(mime.TextBody)
+                    ? mime.TextBody
+                    : SafeHtmlRenderer.CreateReadableTextFallback(mime.HtmlBody);
+                if (string.IsNullOrWhiteSpace(body)) body = draft.BodySnippet;
+                hasAttachments = mime.Attachments.Any();
+            }
+            catch
+            {
+                // A corrupt MIME revision does not hide the safe draft summary.
+            }
             _drafts.Add(new MailItem
             {
                 Id = draft.DraftId,
@@ -158,8 +175,9 @@ public sealed partial class MainWindow : Window
                 Recipients = draft.Recipients,
                 Subject = string.IsNullOrWhiteSpace(draft.Subject) ? "(No subject)" : draft.Subject,
                 Preview = draft.BodySnippet,
-                Body = draft.BodySnippet,
+                Body = body,
                 Timestamp = draft.SavedUtc,
+                HasAttachments = hasAttachments,
             });
         }
 
@@ -178,6 +196,7 @@ public sealed partial class MainWindow : Window
                     Preview = mime.TextBody ?? "Queued MIME message",
                     Body = mime.TextBody ?? mime.HtmlBody ?? "Queued MIME message",
                     Timestamp = operation.EventUtc,
+                    HasAttachments = mime.Attachments.Any(),
                 });
             }
             catch
@@ -245,10 +264,18 @@ public sealed partial class MainWindow : Window
             FolderNavigation.Items.Remove(existing);
         _remoteFolders.Clear();
         _remoteFolderMessages.Clear();
-        if (_store is null) return;
+        if (_store is null)
+        {
+            RefreshCompactMailboxSelector();
+            return;
+        }
 
         var profile = SelectActiveProfile(await _store.ReadLatestMailAccountProfilesAsync());
-        if (profile is null) return;
+        if (profile is null)
+        {
+            RefreshCompactMailboxSelector();
+            return;
+        }
         var folders = (await _store.ReadStoredFolderSummariesAsync())
             .Where(folder =>
                 folder.AccountId.Equals(profile.AccountId, StringComparison.Ordinal) &&
@@ -270,6 +297,7 @@ public sealed partial class MainWindow : Window
                 Tag = tag,
             });
         }
+        RefreshCompactMailboxSelector();
     }
 
     private async Task<IReadOnlyList<MailItem>> ReadStoredFolderMessagesAsync(
@@ -301,6 +329,7 @@ public sealed partial class MainWindow : Window
                     Preview = CreatePreview(body),
                     Body = body,
                     Timestamp = timestamp,
+                    HasAttachments = mime.Attachments.Any(),
                 });
                 _storedMessageIds.Add(stored.MessageId);
             }
@@ -343,6 +372,7 @@ public sealed partial class MainWindow : Window
         _calendarEvents.AddRange((await _store.ReadLocalCalendarAgendaAsync(
                 rangeStart, rangeEnd, maximumCount: 500))
             .Select(CalendarItem.FromStored));
+        ApplyContactsPaneFilter(ContactsPaneSearchBox.Text);
     }
 
     private async void FolderNavigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -350,6 +380,7 @@ public sealed partial class MainWindow : Window
         if (!_uiReady) return;
         if (FolderNavigation.SelectedItem is ListViewItem item && item.Tag is string folder)
         {
+            LabelNavigationList.SelectedItem = null;
             if (_remoteFolders.TryGetValue(folder, out var remoteFolder))
             {
                 try
@@ -379,6 +410,8 @@ public sealed partial class MainWindow : Window
     private void ShowFolder(string folder)
     {
         _activeFolder = folder;
+        SelectCompactMailbox(folder);
+        ComposeLayer.Visibility = Visibility.Collapsed;
         var remoteFolder = _remoteFolders.GetValueOrDefault(folder);
         FolderTitle.Text = remoteFolder is null
             ? folder
@@ -418,6 +451,9 @@ public sealed partial class MainWindow : Window
             "Drafts" => _drafts,
             "Outbox" => _outbox,
             "Sent" => _sent,
+            "Archive" => _archive,
+            "Trash" => _trash,
+            "Junk" => _junk,
             _ when remoteFolder is not null => _remoteFolderMessages,
             _ => [],
         };
@@ -440,7 +476,10 @@ public sealed partial class MainWindow : Window
 
     private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
-        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+        if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+        if (_activeFolder.StartsWith("label:", StringComparison.Ordinal))
+            ShowLabel(_activeFolder);
+        else
             ShowFolder(_activeFolder);
     }
 
@@ -472,8 +511,10 @@ public sealed partial class MainWindow : Window
 
     private async void MessageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        UpdateMessageActionState();
         if (MessageList.SelectedItem is not MailItem item) return;
         _selectedMessage = item;
+        InlineReplyComposer.Visibility = Visibility.Collapsed;
         DetailSubject.Text = item.Subject;
         DetailSender.Text = item.Sender;
         DetailRecipients.Text = $"To {item.Recipients} · {item.Timestamp.LocalDateTime:g}";
@@ -482,6 +523,7 @@ public sealed partial class MainWindow : Window
         DetailBody.Visibility = Visibility.Visible;
         HtmlMessageView.Visibility = Visibility.Collapsed;
         AttachmentPanel.Visibility = Visibility.Collapsed;
+        AttachmentButton.IsEnabled = false;
         AttachmentList.ItemsSource = null;
         AiResultText.Visibility = Visibility.Collapsed;
         AiMessageConsentCheckBox.IsChecked = false;
@@ -512,6 +554,8 @@ public sealed partial class MainWindow : Window
                 : $"{attachments.Length} attachments";
             AttachmentList.ItemsSource = attachments;
             AttachmentPanel.Visibility = Visibility.Visible;
+            AttachmentButton.IsEnabled = true;
+            item.HasAttachments = true;
         }
         catch (Exception exception)
         {
@@ -829,14 +873,7 @@ public sealed partial class MainWindow : Window
             ShowStatus("Select a message before replying.", InfoBarSeverity.Warning);
             return;
         }
-        OpenComposer();
-        ComposeHeading.Text = $"Reply to {_selectedMessage.Sender}";
-        ComposeToBox.Text = ExtractMailboxOrFallback(_selectedMessage.Sender);
-        ComposeSubjectBox.Text = _selectedMessage.Subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
-            ? _selectedMessage.Subject
-            : $"Re: {_selectedMessage.Subject}";
-        ComposeBodyBox.Text = $"\r\n\r\nOn {_selectedMessage.Timestamp.LocalDateTime:g}, {_selectedMessage.Sender} wrote:\r\n> " +
-                              _selectedMessage.Body.Replace("\n", "\n> ", StringComparison.Ordinal);
+        OpenInlineReply(replyAll: false);
     }
 
     private void OpenComposer()
@@ -845,17 +882,23 @@ public sealed partial class MainWindow : Window
         ComposeHeading.Text = "New message";
         ComposeToBox.Text = string.Empty;
         ComposeCcBox.Text = string.Empty;
+        ComposeBccBox.Text = string.Empty;
         ComposeSubjectBox.Text = string.Empty;
-        ComposeBodyBox.Text = string.Empty;
+        ComposeFromBox.Text = string.IsNullOrWhiteSpace(_settings.SenderAddress)
+            ? "demo@novaemail.local"
+            : _settings.SenderAddress;
+        SetComposeBodyText(string.Empty);
+        ComposeHtmlInput.Text = string.Empty;
+        ComposePrioritySelector.SelectedIndex = 0;
+        ComposeReadReceiptCheckBox.IsChecked = false;
         _composeAttachments.Clear();
         UpdateComposeAttachmentSummary();
         AiDraftConsentCheckBox.IsChecked = false;
-        ComposeLayer.Visibility = Visibility.Visible;
+        ShowComposeWorkspace();
         ComposeToBox.Focus(FocusState.Programmatic);
     }
 
-    private void CloseComposeButton_Click(object sender, RoutedEventArgs e) =>
-        ComposeLayer.Visibility = Visibility.Collapsed;
+    private void CloseComposeButton_Click(object sender, RoutedEventArgs e) => CloseComposer();
 
     private async void AttachFilesButton_Click(object sender, RoutedEventArgs e)
     {
@@ -965,8 +1008,10 @@ public sealed partial class MainWindow : Window
                 Preview = stored.BodySnippet,
                 Body = message.TextBody ?? string.Empty,
                 Timestamp = stored.SavedUtc,
+                HasAttachments = message.Attachments.Any(),
             });
-            ComposeLayer.Visibility = Visibility.Collapsed;
+            CloseComposer();
+            SelectFolder("Drafts");
             ShowStatus("Draft saved locally.", InfoBarSeverity.Success);
         }
         catch (Exception exception)
@@ -1001,8 +1046,9 @@ public sealed partial class MainWindow : Window
                 Preview = BoundedPreview(message.TextBody),
                 Body = message.TextBody ?? string.Empty,
                 Timestamp = DateTimeOffset.Now,
+                HasAttachments = message.Attachments.Any(),
             });
-            ComposeLayer.Visibility = Visibility.Collapsed;
+            CloseComposer();
             SelectFolder("Outbox");
             ShowStatus("Message staged in Outbox. Demo mode did not contact an SMTP server.", InfoBarSeverity.Success);
         }
@@ -1028,14 +1074,67 @@ public sealed partial class MainWindow : Window
         AddAddresses(message.Cc, ComposeCcBox.Text);
         if (requireRecipient && message.To.Count + message.Cc.Count == 0)
             throw new InvalidDataException("Add at least one recipient before staging the message.");
-        var body = new BodyBuilder { TextBody = ComposeBodyBox.Text ?? string.Empty };
+        AddAddresses(message.Bcc, ComposeBccBox.Text);
+        var body = new BodyBuilder
+        {
+            TextBody = GetComposeBodyText(),
+            HtmlBody = string.IsNullOrWhiteSpace(ComposeHtmlInput.Text) ? null : ComposeHtmlInput.Text,
+        };
         foreach (var attachment in _composeAttachments)
             body.Attachments.Add(
                 attachment.FileName,
                 attachment.Content,
                 ContentType.Parse(attachment.MediaType));
         message.Body = body.ToMessageBody();
+        AddRichTextAlternative(message, GetComposeRtf());
+        if ((ComposePrioritySelector.SelectedItem as ComboBoxItem)?.Tag is string priority)
+        {
+            message.Importance = priority switch
+            {
+                "Urgent" => MessageImportance.High,
+                "NonUrgent" => MessageImportance.Low,
+                _ => MessageImportance.Normal,
+            };
+        }
+        if (ComposeReadReceiptCheckBox.IsChecked is true)
+            message.Headers[HeaderId.DispositionNotificationTo] = senderText;
         return message;
+    }
+
+    private static void AddRichTextAlternative(MimeMessage message, string rtf)
+    {
+        if (string.IsNullOrWhiteSpace(rtf)) return;
+        var richPart = new TextPart("rtf") { Text = rtf };
+        static void InsertBeforeHtml(MultipartAlternative alternative, TextPart part)
+        {
+            var htmlIndex = alternative
+                .Select((entity, index) => (entity, index))
+                .FirstOrDefault(item => item.entity is TextPart text && text.IsHtml)
+                .index;
+            if (htmlIndex > 0) alternative.Insert(htmlIndex, part);
+            else alternative.Add(part);
+        }
+
+        if (message.Body is MultipartAlternative directAlternative)
+        {
+            InsertBeforeHtml(directAlternative, richPart);
+            return;
+        }
+        if (message.Body is Multipart multipart && multipart.Count > 0)
+        {
+            if (multipart[0] is MultipartAlternative nestedAlternative)
+            {
+                InsertBeforeHtml(nestedAlternative, richPart);
+                return;
+            }
+            if (multipart[0] is TextPart plain)
+            {
+                multipart[0] = new MultipartAlternative { plain, richPart };
+                return;
+            }
+        }
+        if (message.Body is TextPart textPart)
+            message.Body = new MultipartAlternative { textPart, richPart };
     }
 
     private static void AddAddresses(InternetAddressList target, string? text)
@@ -1198,7 +1297,7 @@ public sealed partial class MainWindow : Window
             ShowStatus("Check the AI consent box for this request first.", InfoBarSeverity.Warning);
             return;
         }
-        if (string.IsNullOrWhiteSpace(ComposeBodyBox.Text))
+        if (string.IsNullOrWhiteSpace(GetComposeBodyText()))
         {
             ShowStatus("Write a draft before asking AI to polish it.", InfoBarSeverity.Warning);
             return;
@@ -1210,19 +1309,19 @@ public sealed partial class MainWindow : Window
             var coordinator = CreateAiCoordinator(out var transport);
             using (transport)
             {
-                ComposeBodyBox.Text = await coordinator.ReviseDraftAsync(
+                SetComposeBodyText(await coordinator.ReviseDraftAsync(
                     EnabledAiProfile(),
                     new EmailDraftRevisionSource(
                         identity,
                         ComposeSubjectBox.Text,
-                        ComposeBodyBox.Text,
+                        GetComposeBodyText(),
                         _selectedMessage is null ? null : ToAiSource(_selectedMessage)),
                     new EmailIntelligenceConsent(
                         identity,
                         EmailIntelligenceOperation.ReviseDraft,
                         now,
                         AllowMessageContentProcessing: true),
-                    now);
+                    now));
             }
             AiDraftConsentCheckBox.IsChecked = false;
             ShowStatus("AI revision inserted for review. Nothing was sent.", InfoBarSeverity.Success);
