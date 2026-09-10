@@ -51,8 +51,6 @@ public sealed partial class MainWindow : Window
             InitializeComponent();
             InitializeRestoredUi();
             ComposeAttachmentList.ItemsSource = _composeAttachments;
-            ExtendsContentIntoTitleBar = true;
-            SetTitleBar(TitleBarRegion);
             SeedInbox();
             ResetContactEditor();
             ResetCalendarEditor();

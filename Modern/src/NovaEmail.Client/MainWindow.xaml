@@ -30,7 +30,7 @@
         <CommandBar x:Name="MainCommandBar" Grid.Row="0" MinHeight="58"
                     DefaultLabelPosition="Right" IsDynamicOverflowEnabled="True">
             <CommandBar.Content>
-                <Grid x:Name="TitleBarRegion" Width="510" MinWidth="320" Margin="8,0,14,0" ColumnSpacing="10">
+                <Grid Width="510" MinWidth="320" Margin="8,0,14,0" ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="42" />
                         <ColumnDefinition Width="*" />
